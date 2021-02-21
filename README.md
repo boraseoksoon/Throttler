@@ -63,7 +63,6 @@ class ViewController: UIViewController {
     }
 }
 
-*/
 ```
 
 <b> Output: </b>
