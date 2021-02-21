@@ -34,6 +34,10 @@ within few seconds.
 
 <b> With Throttler, </b>
 ```swift
+import UIKit
+
+import Throttler
+
 class ViewController: UIViewController {
     @IBOutlet var button: UIButton!
     
