@@ -10,7 +10,8 @@
 Throttler is an library that throttles repeated and continuous input tasks <br>until the last in a single drop of one line API.
 
 <br>
-## How to use
+
+# How to use
 
 ```swift
 for i in 1...1000 {
@@ -185,9 +186,9 @@ It is a common situation I can meet in my daily work.<br>Think about how many li
 #### Swift Package Manager
 
 - File > Swift Packages > Add Package Dependency
-- Add `https://github.com/onevcat/Kingfisher.git`
-- Click Next
-- Done
+- Add `https://github.com/boraseoksoon/Throttler.git`
+- Click Next.
+- Done :)
 
 
 ### Contact
