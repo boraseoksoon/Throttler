@@ -7,7 +7,7 @@
 <br>
 # Throttler
 
-Throttler is an library that throttles repeated and continuous input tasks <br>until the last in a single drop of one line API.
+Throttler is a library that<br>throttles unnecessarily repeated, continuous and massive inputs<br>until the last in a single drop of one line API.
 
 <br>
 
