@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Throttler {
+public struct Throttler {
     static private var workers: [String: Worker] = [:]
     
     static public func go(identifier: String = "\(Thread.callStackSymbols)",
