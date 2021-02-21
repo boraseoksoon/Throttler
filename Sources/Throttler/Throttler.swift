@@ -10,7 +10,7 @@ import Foundation
 struct Throttler {
     static private var workers: [String: Worker] = [:]
     
-    static func go(identifier: String = "\(Thread.callStackSymbols)",
+    static public func go(identifier: String = "\(Thread.callStackSymbols)",
                    delay: TimeInterval = 1.0,
                    action: @escaping () -> Void) {
         var worker: Worker? = nil
