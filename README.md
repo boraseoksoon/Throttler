@@ -14,6 +14,8 @@ Throttler is an library that throttles repeated and continuous input tasks <br>u
 # How to use
 
 ```swift
+import Throttler
+
 for i in 1...1000 {
     Throttler.go {
         print("go! > \(i)")
