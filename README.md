@@ -199,11 +199,12 @@ It is a common situation I can meet in my daily work.<br>Think about how many li
 <br>
 
 ## Why made?
-Is it only me who always realized later on iOS I did not validate continuous and repeated input of users (who rapidly bash buttons like tap tap tap, click click click really in a 10 times in a row in few seconds) requesting pretty heavy HTTP request or some resource consuming task? and QA told me please it needs to be controlled on front-end in the first place.
-After that, I always repeatedly used to implement this task using DispatchWorkItem or Combine, Timer with isUserInteractionEnabled flags or even worse ,
-UIApplication.shared.beginIgnoringInteractionEvents() UIApplication.shared.endIgnoringInteractionEvents()
-things like that... ( I know it should be only used when you have really no time under serious pressure)
-Again, this time while doing my own project, I met this issue again.
+Is it only me who always realized later on iOS I did not validate continuous and repeated input of users (who rapidly bash buttons like tap tap tap, click click click really in a 10 times in a row in few seconds) requesting pretty heavy HTTP request or some resource consuming task? and QA told me please it needs to be controlled on front-end in the first place.<br>
+After that, I always repeatedly used to implement this task using DispatchWorkItem or Combine, Timer with isUserInteractionEnabled flags or <br> even worse,
+UIApplication.shared.beginIgnoringInteractionEvents() <br>UIApplication.shared.endIgnoringInteractionEvents()
+things like that... ( I know it should be only used when you have really no time under serious pressure)<br>
+
+Again, this time while doing my own project, I met this issue again.<br>
 
 So, I made up mind to build my own yesterday.
 
