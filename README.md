@@ -13,6 +13,9 @@ Throttler is a library that throttles unnecessarily repeated, continuous and <br
 
 # How to use
 
+Just drop it.
+
+
 ```swift
 import Throttler
 
@@ -25,11 +28,24 @@ for i in 1...1000 {
 // go! > 1000
 ```
 
+<br>
+
+<p align="center">
+<img src="https://firebasestorage.googleapis.com/v0/b/boraseoksoon-ff7d3.appspot.com/o/Throttler.png?alt=media&token=d59cd2dd-e2bc-4214-a1e3-7cd0390c1a5a" alt="Throttler" title="Throttler" width="1024"/>
+</p>
+
+<br>
+
+[How to use in Yotube](https://youtu.be/UvWZ8uv0j0s)
+
+<br>
+
+
 ## Use case
 
 While it is originally developed to solve the problem where vast number of user typing input<br>involving CPU intensive tasks have be to performed repeatedly and constantly<br>on [HLVM,](https://hlvm.co.kr)
 
-A common problem that Throttler can solve is <br>a user taps a button that requests asyncronous network call a massive number of times <br>
+A common problem that Throttler can solve is <br>a user taps a button that requests asynchronous network call a massive number of times <br>
 within few seconds. 
 
 <b> With Throttler, </b>
