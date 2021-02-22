@@ -198,6 +198,10 @@ It is a common situation I can meet in my daily work.<br>Think about how many li
 <br>
 <br>
 
+## Advantages Versus Combine, RxSwift Throttle and Debounce
+- concise API, one liner, no brainer
+- DispatchWorkItem does the job here. It can cancel http request not initiated out of box.
+- Backward compatibility. Combine needs iOS 13 / macOS Catalina and its new runtime to work. There is no backward compatibility to earlier versions of their operating systems planned. (currently we live 2021 though..:) ) 
 
 ## Requirements
 - Swift 5.3+
