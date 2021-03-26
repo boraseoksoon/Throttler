@@ -5,9 +5,10 @@
 <sub>Icon credits: [Lorc, Delapouite & contributors](https://game-icons.net)</sub>
 <br>
 <br>
+
 # Throttler
 
-Throttler is a library that throttles unnecessarily repeated, continuous and <br>massive inputs until the last in a single drop of one line API.
+Throttler is a library that throttles unnecessarily repeated and <br>massive inputs until the last in a single drop of one liner API.
 
 <br>
 
