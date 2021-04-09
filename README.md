@@ -207,7 +207,7 @@ things like that... ( I know it should be only used when you have really no time
 
 Again, this time while doing my own project, I met this issue again.<br>
 
-So, I made up mind to build my own yesterday.
+So, I made up my mind to build my own yesterday.
 
 
 ## Advantages Versus Combine, RxSwift Throttle and Debounce
