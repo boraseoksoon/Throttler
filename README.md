@@ -10,6 +10,8 @@
 
 Throttler is a library that throttles unnecessarily repeated and <br>massive inputs until the last in a single drop of one liner API.
 
+[How Throttler works in Yotube](https://www.youtube.com/watch?v=iER3GQ_X7X0)
+
 <br>
 
 # How to use
@@ -43,9 +45,6 @@ for i in 1...1000 {
 
 
 ## Use case
-
-[UseCase example in Yotube](https://www.youtube.com/watch?v=TqG8clIi20k)
-
 
 While it is originally developed to solve the problem where vast number of user typing input<br>involving CPU intensive tasks have be to performed repeatedly and constantly<br>on [HLVM,](https://hlvm.co.kr)
 
