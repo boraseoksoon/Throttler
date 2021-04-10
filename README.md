@@ -44,6 +44,9 @@ for i in 1...1000 {
 
 ## Use case
 
+[UseCase example in Yotube](https://www.youtube.com/watch?v=TqG8clIi20k)
+
+
 While it is originally developed to solve the problem where vast number of user typing input<br>involving CPU intensive tasks have be to performed repeatedly and constantly<br>on [HLVM,](https://hlvm.co.kr)
 
 A common problem that Throttler can solve is <br>a user taps a button that requests asynchronous network call a massive number of times <br>
