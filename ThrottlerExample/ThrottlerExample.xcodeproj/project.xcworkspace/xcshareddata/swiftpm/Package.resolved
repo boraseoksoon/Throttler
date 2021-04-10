@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Throttler",
+        "repositoryURL": "https://github.com/boraseoksoon/Throttler",
+        "state": {
+          "branch": null,
+          "revision": "6a78307c49317abe1bb7525b774c275b2000526a",
+          "version": "1.0.2"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
