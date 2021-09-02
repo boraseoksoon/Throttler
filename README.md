@@ -8,7 +8,7 @@
 
 # Throttler
 
-Throttler is a library that throttles unnecessarily repeated and <br>massive inputs until the last in a single drop of one liner API.
+Throttler is a library that throttles unnecessarily repeated and <br>massive inputs until the last in one liner API.
 
 [How Throttler works in Yotube](https://www.youtube.com/watch?v=iER3GQ_X7X0)
 
