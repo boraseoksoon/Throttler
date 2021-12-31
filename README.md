@@ -8,27 +8,63 @@
 
 # Throttler
 
-Throttler is a library that throttles unnecessarily repeated and <br>massive inputs until the last in one liner API.
+Throttler is a library to help you use throttle and debounce in one liner without having to go to reactive programming such as Combine, RxSwift.
 
 [How Throttler works in Yotube](https://www.youtube.com/watch?v=iER3GQ_X7X0)
 
 <br>
 
-# How to use
+# How to use debounce
 
 Just drop it.
-
 
 ```swift
 import Throttler
 
 for i in 1...1000 {
-    Throttler.go {
-        print("go! > \(i)")
+    Throttler.debounce {
+        print("debounce! > \(i)")
     }
 }
 
-// go! > 1000
+// debounce! > 1
+// debounce! > 1000
+
+```
+
+# How to use throttle
+
+Just drop it.
+
+
+```swift
+var sum = 0
+
+for i in 0...10 {
+    print("for loop : \(i)")
+
+    Throttler.throttle(delay: .milliseconds(10)) {
+        sum += 1
+        print("sum : \(sum)")
+    }
+}
+
+// for loop : 0
+// sum : 1
+// for loop : 1
+// for loop : 2
+// sum : 2
+// for loop : 3
+// for loop : 4
+// for loop : 5
+// for loop : 6
+// sum : 3
+// for loop : 7
+// for loop : 8
+// for loop : 9
+// for loop : 10
+// sum : 4
+
 ```
 
 <br>
@@ -39,10 +75,19 @@ for i in 1...1000 {
 
 <br>
 
-[How to use in Yotube](https://youtu.be/UvWZ8uv0j0s)
+## Migration 1.0.4 -> 1.0.5
 
-<br>
+Throttler.go is equivalent to Throttler.debounce
 
+```swift
+Throttler.go {
+    print("your work!")
+}
+
+Throttler.debounce {
+    print("your work!")
+}
+```
 
 ## Use case
 
@@ -70,7 +115,7 @@ class ViewController: UIViewController {
     @IBAction func click(_ sender: Any) {
         print("click1!")
         
-        Throttler.go {
+        Throttler.debounce {
         
             // Imaging this is a time-consuming and resource-heavy task that takes an unknown amount of time!
             
@@ -186,7 +231,7 @@ click1 : 1 :  {
 ...
 ..
 .
-Your server will start to cry!
+Your server will be hell busy trying to response all the time (putting cache aside)
 😂😂😂
 
 */
@@ -194,28 +239,30 @@ Your server will start to cry!
 
 <br>
 
-Fundamentally, Throttler can be used to solve various type of problems<br>related to any repeated and continuous input issue <br> usually iOS software engineers usually want to avoid.
-<br><br>
-
-It is a common situation I can meet in my daily work.<br>Think about how many lines you need to write without Throttler<br>to solve these repeatedly tedious and error-prone task!
-<br>
-<br>
-
-## Why made?
-Is it only me who always realized later on iOS I did not validate continuous and repeated input of users (who rapidly bash buttons like tap tap tap, click click click really in a 10 times in a row in few seconds) requesting pretty heavy HTTP request or some resource consuming task? and QA told me please it needs to be controlled on front-end in the first place.<br>
-After that, I always repeatedly used to implement this task using DispatchWorkItem or Combine, Timer with isUserInteractionEnabled flags or <br> even worse,
-UIApplication.shared.beginIgnoringInteractionEvents() <br>UIApplication.shared.endIgnoringInteractionEvents()
-things like that... ( I know it should be only used when you have really no time under serious pressure)<br>
-
-Again, this time while doing my own project, I met this issue again.<br>
-
-So, I made up my mind to build my own yesterday.
-
-
 ## Advantages Versus Combine, RxSwift Throttle and Debounce
-- Concise API, one liner, no brainer
-- DispatchWorkItem does the job here. It can cancel http request not initiated out of box.
-- Backward compatibility. Combine needs iOS 13 / macOS Catalina and its new runtime to work. There is no backward compatibility to earlier versions of their operating systems planned. (currently we are living 2021 though...;) 
+- One liner, no brainer
+- You can use advanced `debounce`, easily using one liner, letting a first work run (using shouldRunImmediately parameter, it is set to be true by default) 
+
+You can abstract away this kind of implementation 
+https://stackoverflow.com/questions/60295544/how-do-you-apply-a-combine-operator-only-after-the-first-message-has-been-receiv
+
+into, for example, 
+```swift
+import Throttler
+
+for i in 1...1000 {
+    Throttler.debounce {
+        print("debounce! > \(i)")
+    }
+}
+
+// debounce! > 1
+// debounce! > 1000
+
+```
+That's it
+
+- For those who hate learning Reactive programming
 
 ## Requirements
 - Swift 5.3+
