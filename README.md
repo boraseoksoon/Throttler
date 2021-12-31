@@ -54,6 +54,7 @@ var sum = 0
 for i in 0...10 {
     print("for loop : \(i)")
 
+    // equivalent to throttle RxSwift and Combine provides by default.
     Throttler.throttle(delay: .milliseconds(10)) {
         sum += 1
         print("sum : \(sum)")
