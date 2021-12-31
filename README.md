@@ -10,8 +10,6 @@
 
 Throttler is a library to help you use throttle and debounce in one liner without having to go to reactive programming such as Combine, RxSwift.
 
-[How Throttler works in Yotube](https://www.youtube.com/watch?v=iER3GQ_X7X0)
-
 <br>
 
 # How to use debounce
@@ -21,6 +19,8 @@ Just drop it.
 ```swift
 import Throttler
 
+// advanced debounce, running a first event immediately before initiating debounce.
+
 for i in 1...1000 {
     Throttler.debounce {
         print("debounce! > \(i)")
@@ -28,6 +28,17 @@ for i in 1...1000 {
 }
 
 // debounce! > 1
+// debounce! > 1000
+
+
+// equivalent to debounce of Combine, RxSwift.
+
+for i in 1...1000 {
+    Throttler.debounce(shouldRunImmediately: false) {
+        print("debounce! > \(i)")
+    }
+}
+
 // debounce! > 1000
 
 ```
@@ -75,16 +86,43 @@ for i in 0...10 {
 
 <br>
 
+## Advanced debounce
+
+Throttler can do advanced debounce feature, running a first event immediately before initiating debounce that Combine and RxSwift don't have by default.
+
+You could, but you may need a complex implementation yourself for that.
+
+For example, 
+Throttler can abstract away this kind of implementation 
+https://stackoverflow.com/questions/60295544/how-do-you-apply-a-combine-operator-only-after-the-first-message-has-been-receiv
+
+into 
+
+```swift
+import Throttler
+
+for i in 1...1000 {
+    Throttler.debounce {
+        print("debounce! > \(i)")
+    }
+}
+
+// debounce! > 1
+// debounce! > 1000
+
+```
+That's it
+
 ## Migration 1.0.4 -> 1.0.5
 
-Throttler.go is equivalent to Throttler.debounce
+Throttler.go is equivalent to Throttler.debounce(shouldRunImmediately: false)
 
 ```swift
 Throttler.go {
     print("your work!")
 }
 
-Throttler.debounce {
+Throttler.debounce(shouldRunImmediately: false) {
     print("your work!")
 }
 ```
@@ -241,27 +279,8 @@ Your server will be hell busy trying to response all the time (putting cache asi
 
 ## Advantages Versus Combine, RxSwift Throttle and Debounce
 - One liner, no brainer
-- You can use advanced `debounce`, easily using one liner, letting a first work run (using shouldRunImmediately parameter, it is set to be true by default) 
-
-You can abstract away this kind of implementation 
-https://stackoverflow.com/questions/60295544/how-do-you-apply-a-combine-operator-only-after-the-first-message-has-been-receiv
-
-into, for example, 
-```swift
-import Throttler
-
-for i in 1...1000 {
-    Throttler.debounce {
-        print("debounce! > \(i)")
-    }
-}
-
-// debounce! > 1
-// debounce! > 1000
-
-```
-That's it
-
+- To debounce and throttle tasks, you don't have to go to reactive programming like black magic in some sense 😅. 
+- You can get advanced debounce out of box (see above)
 - For those who hate learning Reactive programming
 
 ## Requirements
