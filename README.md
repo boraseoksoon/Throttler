@@ -110,12 +110,15 @@ That's it
 
 ## Migration 1.0.4 -> 1.0.5
 
-Throttler.go is equivalent to Throttler.debounce(shouldRunImmediately: false)
+Throttler.go does the equivalent job to Throttler.debounce(shouldRunImmediately: false)
 
 ```swift
+// 1.0.4
 Throttler.go {
     print("your work!")
 }
+
+// 1.0.5
 
 Throttler.debounce(shouldRunImmediately: false) {
     print("your work!")
