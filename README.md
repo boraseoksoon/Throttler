@@ -19,7 +19,7 @@ Just drop it.
 ```swift
 import Throttler
 
-// advanced debounce, running a first event immediately before initiating debounce.
+// advanced debounce, running a first task immediately before initiating debounce.
 
 for i in 1...1000 {
     Throttler.debounce {
