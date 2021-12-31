@@ -81,12 +81,6 @@ for i in 0...10 {
 
 <br>
 
-<p align="center">
-<img src="https://firebasestorage.googleapis.com/v0/b/boraseoksoon-ff7d3.appspot.com/o/Throttler.png?alt=media&token=d59cd2dd-e2bc-4214-a1e3-7cd0390c1a5a" alt="Throttler" title="Throttler" width="1024"/>
-</p>
-
-<br>
-
 ## Advanced debounce
 
 Throttler can do advanced debounce feature, running a first event immediately before initiating debounce that Combine and RxSwift don't have by default.
