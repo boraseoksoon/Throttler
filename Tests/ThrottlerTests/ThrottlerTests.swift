@@ -36,7 +36,7 @@ final class ThrottlerTests: XCTestCase {
         for i in 0...count {
             print("for loop : \(i)")
             
-            Throttler.debounce(shouldRunImmediately: false) {
+            Debouncer.debounce(shouldRunImmediately: false) {
                 sum += 1
                 print("sum : \(sum)")
 
@@ -69,7 +69,7 @@ final class ThrottlerTests: XCTestCase {
         for i in 0...count2 {
             print("for loop : \(i)")
 
-            Throttler.debounce {
+            Debouncer.debounce {
                 sum2 += 1
                 print("sum2 : \(sum2)")
                 
@@ -282,12 +282,12 @@ extension ThrottlerTests {
             print("for loop : \(i)")
             
             // note: shouldStartImmediately is true by default.
-            Throttler.debounce {
+            Debouncer.debounce {
                 sum += 1
                 print("Debouncer.debounce1 executed: sum : \(sum)!")
             }
             
-            Throttler.debounce(queue: .global(), delay:2.0, shouldRunImmediately: false) {
+            Debouncer.debounce(queue: .global(), delay:2.0, shouldRunImmediately: false) {
                 sum2 += 1
                 print("Debouncer.debounce2 executed: sum : \(sum)!")
                 
