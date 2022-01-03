@@ -122,9 +122,14 @@ Throttler.go does the equivalent job to Throttler.debounce(shouldRunImmediately:
 
 ```swift
 // 1.0.4
-Throttler.go {
-    print("your work!")
+
+for i in 1...1000 {
+    Throttler.go {
+        print("debounce! > \(i)")
+    }
 }
+
+// debounce! > 1000
 
 // 1.0.6
 
