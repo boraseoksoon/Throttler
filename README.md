@@ -12,37 +12,6 @@ Throttler is a library to help you use throttle and debounce in one liner withou
 
 <br>
 
-# How to use debounce
-
-Just drop it.
-
-```swift
-import Throttler
-
-// advanced debounce, running a first task immediately before initiating debounce.
-
-for i in 1...1000 {
-    Throttler.debounce {
-        print("debounce! > \(i)")
-    }
-}
-
-// debounce! > 1
-// debounce! > 1000
-
-
-// equivalent to debounce of Combine, RxSwift.
-
-for i in 1...1000 {
-    Throttler.debounce(shouldRunImmediately: false) {
-        print("debounce! > \(i)")
-    }
-}
-
-// debounce! > 1000
-
-```
-
 # How to use throttle
 
 Just drop it.
@@ -76,6 +45,37 @@ for i in 0...10 {
 // for loop : 9
 // for loop : 10
 // sum : 4
+
+```
+
+# How to use debounce
+
+Just drop it.
+
+```swift
+import Throttler
+
+// advanced debounce, running a first task immediately before initiating debounce.
+
+for i in 1...1000 {
+    Debouncer.debounce {
+        print("debounce! > \(i)")
+    }
+}
+
+// debounce! > 1
+// debounce! > 1000
+
+
+// equivalent to debounce of Combine, RxSwift.
+
+for i in 1...1000 {
+    Debouncer.debounce(shouldRunImmediately: false) {
+        print("debounce! > \(i)")
+    }
+}
+
+// debounce! > 1000
 
 ```
 
@@ -282,17 +282,39 @@ Your server will be hell busy trying to response all the time (putting cache asi
 - For those who hate learning Reactive programming
 
 ## Requirements
-- Swift 5.3+
+
+iOS 13.0, macOS 10.15
+        
+## Note
+
+Pay special attention to the identifier parameter. the default identifier is \("Thread.callStackSymbols") to make api trailing closure for one liner for the sake of brevity. However, it is highly recommend that a developer should provide explicit identifier for their work to debounce. Also, please note that the default queue is global queue, it may cause thread explosion issue if not explicitly specified, so use at your own risk.
+
+```swift
+
+    /// - Parameters:
+    ///   - identifier: the identifier to group works to throttle. Throttler must have equivalent identifier to each work in a group to throttle.
+    ///   - queue: a queue to run a work on. dispatch global queue will be chosen by default if not specified.
+    ///   - delay: delay for throttle. time unit is second. given default is 1.0 sec.
+    ///   - shouldRunImmediately: a boolean type where true will run the first work immediately regardless.
+    ///   - shouldRunLatest: A Boolean value that indicates whether to publish the most recent element. If `false`, the publisher emits the first element received during the interval.
+    ///   - work: a work to run
+    /// - Returns: Void
+    static public func throttle(identifier: String = "\(Thread.callStackSymbols)",
+                                queue: DispatchQueue? = nil,
+                                delay: DispatchQueue.SchedulerTimeType.Stride = .seconds(1),
+                                shouldRunImmediately: Bool = true,
+                                shouldRunLatest: Bool = true,
+                                work: @escaping () -> Void)
+```
 
 ### Installation
-
 
 #### Swift Package Manager
 
 - File > Swift Packages > Add Package Dependency
 - Add `https://github.com/boraseoksoon/Throttler.git`
 - Click Next.
-- Done :)
+- Done.
 
 
 ### Contact
