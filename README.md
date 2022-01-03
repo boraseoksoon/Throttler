@@ -16,6 +16,14 @@ Throttler is a library to help you use throttle and debounce in one liner withou
 
 Just drop it.
 
+```swift
+for i in 0...10 {
+    Throttler.throttle {
+       print("throttle : \(i)")
+    }
+}
+```
+
 
 ```swift
 var sum = 0
@@ -108,7 +116,7 @@ for i in 1...1000 {
 ```
 That's it
 
-## Migration 1.0.4 -> 1.0.5
+## Migration 1.0.4 -> 1.0.6
 
 Throttler.go does the equivalent job to Throttler.debounce(shouldRunImmediately: false)
 
@@ -118,11 +126,15 @@ Throttler.go {
     print("your work!")
 }
 
-// 1.0.5
+// 1.0.6
 
-Throttler.debounce(shouldRunImmediately: false) {
-    print("your work!")
+for i in 1...1000 {
+    Debouncer.debounce(shouldRunImmediately: false) {
+        print("debounce! > \(i)")
+    }
 }
+
+// debounce! > 1000
 ```
 
 ## Use case
