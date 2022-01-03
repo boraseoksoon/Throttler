@@ -10,8 +10,6 @@
 
 Throttler is a library to help you use throttle and debounce in one liner without having to go to reactive programming such as Combine, RxSwift.
 
-<br>
-
 # How to use throttle
 
 Just drop it.
