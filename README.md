@@ -105,7 +105,7 @@ into
 import Throttler
 
 for i in 1...1000 {
-    Throttler.debounce {
+    Debouncer.debounce {
         print("debounce! > \(i)")
     }
 }
@@ -163,7 +163,7 @@ class ViewController: UIViewController {
     @IBAction func click(_ sender: Any) {
         print("click1!")
         
-        Throttler.debounce {
+        Debouncer.debounce {
         
             // Imaging this is a time-consuming and resource-heavy task that takes an unknown amount of time!
             
@@ -289,9 +289,8 @@ Your server will be hell busy trying to response all the time (putting cache asi
 
 ## Advantages Versus Combine, RxSwift Throttle and Debounce
 - One liner, no brainer
-- To debounce and throttle tasks, you don't have to go to reactive programming like black magic in some sense 😅. 
+- for those who don't prefer Reactive programming to do debounce and throttle operation, you don't have to go to reactive programming like black magic in some sense. 
 - You can get advanced debounce out of box (see above)
-- For those who hate learning Reactive programming
 
 ## Requirements
 
