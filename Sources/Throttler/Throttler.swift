@@ -48,7 +48,11 @@ public struct Throttler {
     ///
     ///     "done!"
     ///
-    /// - Note: Pay special attention to the identifier parameter. the default identifier is \("Thread.callStackSymbols") to make api trailing closure for one liner for the sake of brevity. However, it is highly recommend that a developer should provide explicit identifier for their work to debounce. Also, please note that the default queue is global queue, it may cause thread explosion issue if not explicitly specified , so use at your own risk.
+    /// - Note: Pay special attention to the identifier parameter. 
+    ///         The default identifier is \("Thread.callStackSymbols") to make api trailing closure for one liner for the sake of brevity. 
+    ///         However, it is highly recommend that a developer should provide explicit identifier for their work to debounce. 
+    ///         Also, please note that the default queue is global queue, it may cause thread explosion issue if not explicitly specified, 
+    ///         so use at your own risk.
     ///
     /// - Parameters:
     ///   - identifier: the identifier to group works to throttle. Throttler must have equivalent identifier to each work in a group to throttle.
