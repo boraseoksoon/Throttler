@@ -15,7 +15,7 @@ struct ContentView: View {
             Button(action: {
                 if #available(iOS 16.0, *) {
                     (0...100000).forEach { i in
-                        throttle(.seconds(0.01)) {
+                        throttle {
                             print(i)
                         }
                     }
@@ -27,14 +27,38 @@ struct ContentView: View {
                     }
                 }
                 
-    //            0
-    //            18133
-    //            36058
-    //            57501
-    //            82851
+                //            0
+                //            18133
+                //            36058
+                //            57501
+                //            82851
                 
             }) {
                 Text("throttle")
+            }
+            
+            Button(action: {
+                if #available(iOS 16.0, *) {
+                    delay(.seconds(2)) {
+                        print("fired after 2 sec")
+                    }
+                    
+                    //                    delay {
+                    //                        print("fired after 1 sec")
+                    //                    }
+                    
+                } else {
+                    delay(seconds: 2) {
+                        print("fired after 2 sec")
+                    }
+                }
+                
+                // (delay 2 second..)
+                // ...
+                // fired after 2 sec
+                
+            }) {
+                Text("delay")
             }
             
             Button(action: {
@@ -53,36 +77,12 @@ struct ContentView: View {
                 // ....
                 // ....
                 // fired after 1 second
-
+                
             }) {
                 Text("""
-                     debounce
-                     (click a button continuously as fast as you can)
-                     """)
-            }
-            
-            Button(action: {
-                if #available(iOS 16.0, *) {
-                    delay(.seconds(2)) {
-                        print("fired after 2 sec")
-                    }
-                    
-//                    delay {
-//                        print("fired after 1 sec")
-//                    }
-                    
-                } else {
-                    delay(seconds: 2) {
-                        print("fired after 2 sec")
-                    }
-                }
-
-                // (delay 2 second..)
-                // ...
-                // fired after 2 sec
-
-            }) {
-                Text("delay")
+          debounce
+          (click a button continuously as fast as you can)
+        """)
             }
         }
     }

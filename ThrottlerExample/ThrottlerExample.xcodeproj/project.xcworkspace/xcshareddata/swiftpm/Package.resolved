@@ -1,16 +1,14 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "Throttler",
-        "repositoryURL": "https://github.com/boraseoksoon/Throttler",
-        "state": {
-          "branch": null,
-          "revision": "6a78307c49317abe1bb7525b774c275b2000526a",
-          "version": "1.0.2"
-        }
+  "pins" : [
+    {
+      "identity" : "throttler",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/boraseoksoon/Throttler",
+      "state" : {
+        "revision" : "f0f7380710bdda5a530d6c4850213242166af7ec",
+        "version" : "1.0.9"
       }
-    ]
-  },
-  "version": 1
+    }
+  ],
+  "version" : 2
 }
