@@ -9,6 +9,7 @@ import Foundation
 import Combine
 
 /// struct throttling successive works with provided options.
+@available(*, deprecated, message: "This struct is deprecated. Use throttle() function instead.")
 public struct Throttler {
     
     typealias WorkIdentifier = String
