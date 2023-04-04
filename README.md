@@ -408,13 +408,14 @@ iOS 13.0, macOS 10.15
 if #available(iOS 16.0, *) {
      for i in (0...10000000) {
         throttle {
-          print(i)
+            print(i)
         }
-      }
+    }
 } else {
     for i in (0...10000000) {
-    throttle(seconds: 0.01) {
-      print(i)
+        throttle(seconds: 0.01) {
+            print(i)
+        }
     }
 }
           
