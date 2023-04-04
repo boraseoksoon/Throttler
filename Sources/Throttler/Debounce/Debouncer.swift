@@ -8,6 +8,7 @@
 import Foundation
 
 /// struct debouncing successive works with provided options.
+@available(*, deprecated, message: "This struct is deprecated. Use debounce() function instead.")
 public struct Debouncer {
     
     typealias WorkIdentifier = String
