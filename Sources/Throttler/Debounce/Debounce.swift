@@ -33,6 +33,7 @@ import Foundation
 
 var debounceTask: Task<(), Never>?
 
+@available(macOS 13.0, *)
 @available(iOS 16.0, *)
 public func debounce(
     _ interval: Duration = .seconds(1),

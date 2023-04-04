@@ -37,6 +37,7 @@ import Foundation
 
 var lastExecutionDate: Date?
 
+@available(macOS 13.0, *)
 @available(iOS 16.0, *)
 public func throttle(
     _ interval: Duration = .seconds(1),
@@ -85,7 +86,7 @@ public func throttle(
 var compatibleLastExecutionDate: Date?
 
 public func throttle(
-    seconds: TimeInterval = 1.0,
+    seconds: TimeInterval,
     on actorType: ActorType = .main,
     operation: @escaping () -> Void
 ) {
@@ -100,6 +101,7 @@ public func throttle(
     }
 }
 
+@available(macOS 13.0, *)
 @available(iOS 16.0, *)
 private extension Duration {
     var timeInterval: TimeInterval {

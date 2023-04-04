@@ -36,6 +36,7 @@ import Foundation
 
 var delayTask: Task<(), Never>?
 
+@available(macOS 13.0, *)
 @available(iOS, introduced: 16.0)
 public func delay(
     _ interval: Duration = .seconds(1),
