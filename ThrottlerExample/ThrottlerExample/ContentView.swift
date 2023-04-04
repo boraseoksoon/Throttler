@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  ThrottlerExample
+//  Throttler
 //
 //  Created by Seoksoon Jang on 2021/04/10.
 //
@@ -9,73 +9,82 @@ import SwiftUI
 import Throttler
 
 struct ContentView: View {
+    
     var body: some View {
-        VStack {
-            Spacer()
-            
-            Text("Throttler used.")
-            
+        VStack(spacing: 20) {
             Button(action: {
-                print("button clicked > Throttler used")
-                Throttler.go {
-                    take()
+                if #available(iOS 16.0, *) {
+                    (0...100000).forEach { i in
+                        throttle(.seconds(0.01)) {
+                            print(i)
+                        }
+                    }
+                } else {
+                    (0...100000).forEach { i in
+                        throttle(seconds: 0.01) {
+                            print(i)
+                        }
+                    }
                 }
+                
+    //            0
+    //            18133
+    //            36058
+    //            57501
+    //            82851
+                
             }) {
-                Text(
-                """
-                PLEASE HIT ME AS FAST AS YOU CAN
-                """)
+                Text("throttle")
             }
-            .padding()
-            
-            Spacer()
-            
-            Text("Throttler NOT used.")
             
             Button(action: {
-                print("button clicked > Throttler NOT used")
-                take()
+                if #available(iOS 16.0, *) {
+                    debounce {
+                        print("fired after 1 second")
+                    }
+                } else {
+                    debounce(seconds: 1.0, on: .main) {
+                        print("fired after 1 second")
+                    }
+                }
+                
+                // (click a button as fast as you can)
+                // ....
+                // ....
+                // ....
+                // fired after 1 second
+
             }) {
-                Text("PLEASE HIT ME AS FAST AS YOU CAN")
+                Text("""
+                     debounce
+                     (click a button continuously as fast as you can)
+                     """)
             }
-            .padding()
             
-            Spacer()
-        }
+            Button(action: {
+                if #available(iOS 16.0, *) {
+                    delay(.seconds(2)) {
+                        print("fired after 2 sec")
+                    }
+                    
+//                    delay {
+//                        print("fired after 1 sec")
+//                    }
+                    
+                } else {
+                    delay(seconds: 2) {
+                        print("fired after 2 sec")
+                    }
+                }
 
-    }
-}
+                // (delay 2 second..)
+                // ...
+                // fired after 2 sec
 
-extension ContentView {
-    func generateRandomString(upto: Int = 1,
-                              initNumber: Int = 1,
-                              isDuplicateAllowed: Bool = false,
-                              output: [String] = []) -> [String] {
-        // TODO: TCO or Trampoline to avoid call stack overflow
-        var initNumber = initNumber
-        
-        if output.isEmpty {
-            initNumber = upto
+            }) {
+                Text("delay")
+            }
         }
-        
-        if isDuplicateAllowed ? (upto <= 0) : (initNumber <= Set(output).count) {
-            return isDuplicateAllowed ? output : Array(Set(output))
-        } else {
-            let randomString = String((0...Int.random(in: (0...10))).map { _ in
-                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".randomElement()!
-            })
-            
-            return generateRandomString(
-                upto: upto-1,
-                initNumber: initNumber,
-                isDuplicateAllowed: isDuplicateAllowed,
-                output: output + [randomString])
-        }
-    }
-
-    func take() {
-        let res = generateRandomString(upto: 3000)
-        print(res)
     }
 }
 

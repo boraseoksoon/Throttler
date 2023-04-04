@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		47031BA729DBAF5900EE1CD1 /* Throttler in Frameworks */ = {isa = PBXBuildFile; productRef = 47031BA629DBAF5900EE1CD1 /* Throttler */; };
 		472F57432622288F009950D1 /* ThrottlerExampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472F57422622288F009950D1 /* ThrottlerExampleApp.swift */; };
 		472F57452622288F009950D1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472F57442622288F009950D1 /* ContentView.swift */; };
 		472F574726222890009950D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 472F574626222890009950D1 /* Assets.xcassets */; };
 		472F574A26222890009950D1 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 472F574926222890009950D1 /* Preview Assets.xcassets */; };
-		472F575426222908009950D1 /* Throttler in Frameworks */ = {isa = PBXBuildFile; productRef = 472F575326222908009950D1 /* Throttler */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,7 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				472F575426222908009950D1 /* Throttler in Frameworks */,
+				47031BA729DBAF5900EE1CD1 /* Throttler in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,7 +88,7 @@
 			);
 			name = ThrottlerExample;
 			packageProductDependencies = (
-				472F575326222908009950D1 /* Throttler */,
+				47031BA629DBAF5900EE1CD1 /* Throttler */,
 			);
 			productName = ThrottlerExample;
 			productReference = 472F573F2622288F009950D1 /* ThrottlerExample.app */;
@@ -118,7 +118,7 @@
 			);
 			mainGroup = 472F57362622288F009950D1;
 			packageReferences = (
-				472F575226222908009950D1 /* XCRemoteSwiftPackageReference "Throttler" */,
+				47031BA529DBAF5900EE1CD1 /* XCRemoteSwiftPackageReference "Throttler" */,
 			);
 			productRefGroup = 472F57402622288F009950D1 /* Products */;
 			projectDirPath = "";
@@ -338,20 +338,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		472F575226222908009950D1 /* XCRemoteSwiftPackageReference "Throttler" */ = {
+		47031BA529DBAF5900EE1CD1 /* XCRemoteSwiftPackageReference "Throttler" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/boraseoksoon/Throttler";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.2;
+				minimumVersion = 1.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		472F575326222908009950D1 /* Throttler */ = {
+		47031BA629DBAF5900EE1CD1 /* Throttler */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 472F575226222908009950D1 /* XCRemoteSwiftPackageReference "Throttler" */;
+			package = 47031BA529DBAF5900EE1CD1 /* XCRemoteSwiftPackageReference "Throttler" */;
 			productName = Throttler;
 		};
 /* End XCSwiftPackageProductDependency section */
