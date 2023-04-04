@@ -27,7 +27,6 @@ for i in (0...10000000) {
 //  6509981
 //  9809756
 
-
 // specify an interval
 
 (0...100000).forEach { i in
@@ -41,7 +40,6 @@ for i in (0...10000000) {
 //  36058
 //  57501
 //  82851
-
 
 /// debounce
 
@@ -62,7 +60,6 @@ delay {
 delay(.seconds(2)) {
     print("fired after 2 sec")
 }
-
 ```
 
 # What functions look like in SwiftUI: 
@@ -408,16 +405,16 @@ iOS 13.0, macOS 10.15
 if #available(iOS 16.0, *) {
      for i in (0...10000000) {
         throttle {
-          print(i)
+            print(i)
         }
-      }
+    }
 } else {
     for i in (0...10000000) {
-    throttle(seconds: 0.01) {
-      print(i)
+        throttle(seconds: 0.01) {
+            print(i)
+        }
     }
 }
-          
 
 @available(macOS 13.0, *)
 @available(iOS 16.0, *)
