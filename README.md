@@ -12,14 +12,57 @@ One Line to throttle, debounce and delay: Say Goodbye to Reactive Programming su
 
 # At a glance
 
-Just drop it.
-
 ```swift
-for i in 0...10 {
-    Throttler.throttle {
-       print("throttle : \(i)")
+
+/// throttle
+
+for i in (0...10000000) {
+    throttle {
+        print(i)
     }
 }
+
+//  0
+//  3210779
+//  6509981
+//  9809756
+
+
+// specify an interval
+
+(0...100000).forEach { i in
+    throttle(.seconds(0.01)) {
+        print(i)
+    }
+}
+
+//  0
+//  18133
+//  36058
+//  57501
+//  82851
+
+
+/// debounce
+
+debounce {
+    print("debounce with 1 second interval")
+}
+
+debounce(.seconds(3)) {
+    print("debounce with 3 seconds interval")
+}
+
+/// delay
+
+delay {
+    print("fired after 1 sec")
+}
+
+delay(.seconds(2)) {
+    print("fired after 2 sec")
+}
+
 ```
 
 # What functions look like in SwiftUI: 
