@@ -444,6 +444,9 @@ public func throttle(
 - Click Next.
 - Done.
 
+### TODO:
+1. Provide a option to gurantee the last execution no matter what (throttle and debounce)
+2. More ueful functions that can get jobs done in one line code.
 
 ### Contact
 
