@@ -27,7 +27,6 @@ for i in (0...10000000) {
 //  6509981
 //  9809756
 
-
 // specify an interval
 
 (0...100000).forEach { i in
@@ -41,7 +40,6 @@ for i in (0...10000000) {
 //  36058
 //  57501
 //  82851
-
 
 /// debounce
 
@@ -62,7 +60,6 @@ delay {
 delay(.seconds(2)) {
     print("fired after 2 sec")
 }
-
 ```
 
 # What functions look like in SwiftUI: 
