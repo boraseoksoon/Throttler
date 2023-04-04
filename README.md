@@ -8,9 +8,9 @@
 
 # Throttler
 
-Throttler is a library to help you use throttle and debounce in one liner without having to go to reactive programming such as Combine, RxSwift.
+One Line to throttle, debounce and delay: Say Goodbye to Reactive Programming such as RxSwift and Combine.
 
-# How to use throttle
+# At a glance
 
 Just drop it.
 
@@ -22,6 +22,95 @@ for i in 0...10 {
 }
 ```
 
+# What functions look like in SwiftUI: 
+
+```swift
+import SwiftUI
+import Throttler
+
+struct ContentView: View {
+  
+  var body: some View {
+    VStack(spacing: 20) {
+      Button(action: {
+        if #available(iOS 16.0, *) {
+         for i in (0...10000000) {
+            throttle {
+              print(i)
+            }
+          }
+        } else {
+          for i in (0...10000000) {
+            throttle(seconds: 0.01) {
+              print(i)
+            }
+          }
+        }
+        
+//          0
+//          3210779
+//          6509981
+//          9809756
+        
+      }) {
+        Text("throttle")
+      }
+      
+      Button(action: {
+        if #available(iOS 16.0, *) {
+          delay(.seconds(2)) {
+            print("fired after 2 sec")
+          }
+          
+          //                    delay {
+          //                        print("fired after 1 sec")
+          //                    }
+          
+        } else {
+          delay(seconds: 2) {
+            print("fired after 2 sec")
+          }
+        }
+        
+        // (delay 2 second..)
+        // ...
+        // fired after 2 sec
+        
+      }) {
+        Text("delay")
+      }
+      
+      Button(action: {
+        if #available(iOS 16.0, *) {
+          debounce {
+            print("fired after 1 second")
+          }
+        } else {
+          debounce(seconds: 1.0, on: .main) {
+            print("fired after 1 second")
+          }
+        }
+        
+        // (click a button as fast as you can)
+        // ....
+        // ....
+        // ....
+        // fired after 1 second
+        
+      }) {
+        Text("""
+          debounce
+          (click a button continuously as fast as you can)
+        """)
+      }
+    }
+  }
+}
+```
+
+# Struct based (Deprecated, not recommended)
+
+* Throttler
 
 ```swift
 var sum = 0
@@ -54,9 +143,7 @@ for i in 0...10 {
 
 ```
 
-# How to use debounce
-
-Just drop it.
+* Debouncer
 
 ```swift
 import Throttler
@@ -87,7 +174,7 @@ for i in 1...1000 {
 
 <br>
 
-## Advanced debounce
+## Advanced struct-based debounce
 
 Throttler can do advanced debounce feature, running a first event immediately before initiating debounce that Combine and RxSwift don't have by default.
 
@@ -113,32 +200,6 @@ for i in 1...1000 {
 
 ```
 That's it
-
-## Migration 1.0.4 -> 1.0.6
-
-Throttler.go does the equivalent job to Throttler.debounce(shouldRunImmediately: false)
-
-```swift
-// 1.0.4
-
-for i in 1...1000 {
-    Throttler.go {
-        print("debounce! > \(i)")
-    }
-}
-
-// debounce! > 1000
-
-// 1.0.6
-
-for i in 1...1000 {
-    Debouncer.debounce(shouldRunImmediately: false) {
-        print("debounce! > \(i)")
-    }
-}
-
-// debounce! > 1000
-```
 
 ## Use case
 
@@ -291,34 +352,47 @@ Your server will be hell busy trying to response all the time (putting cache asi
 <br>
 
 ## Advantages Versus Combine, RxSwift Throttle and Debounce
-- One liner, no brainer
-- for those who don't prefer Reactive programming to do debounce and throttle operation, you don't have to go to reactive programming like black magic in some sense. 
-- You can get advanced debounce out of box (see above)
+- One liner, no brainer. you can just drop the one line code and it will get up and running out of box.
+- For those who don't prefer Reactive programming to do debounce and throttle operation, you don't have to go to reactive programming like black magic in some sense. 
 
 ## Requirements
 
 iOS 13.0, macOS 10.15
-        
-## Note
+(To use latest version API, iOS 16.0 and macOS 13.0 are required.) 
 
-Pay special attention to the identifier parameter. the default identifier is \("Thread.callStackSymbols") to make api trailing closure for one liner for the sake of brevity. However, it is highly recommend that a developer should provide explicit identifier for their work to debounce. Also, please note that the default queue is global queue, it may cause thread explosion issue if not explicitly specified, so use at your own risk.
+``` swift
 
-```swift
+if #available(iOS 16.0, *) {
+     for i in (0...10000000) {
+        throttle {
+          print(i)
+        }
+      }
+} else {
+    for i in (0...10000000) {
+    throttle(seconds: 0.01) {
+      print(i)
+    }
+}
+          
 
-    /// - Parameters:
-    ///   - identifier: the identifier to group works to throttle. Throttler must have equivalent identifier to each work in a group to throttle.
-    ///   - queue: a queue to run a work on. dispatch global queue will be chosen by default if not specified.
-    ///   - delay: delay for throttle. time unit is second. given default is 1.0 sec.
-    ///   - shouldRunImmediately: a boolean type where true will run the first work immediately regardless.
-    ///   - shouldRunLatest: A Boolean value that indicates whether to publish the most recent element. If `false`, the publisher emits the first element received during the interval.
-    ///   - work: a work to run
-    /// - Returns: Void
-    static public func throttle(identifier: String = "\(Thread.callStackSymbols)",
-                                queue: DispatchQueue? = nil,
-                                delay: DispatchQueue.SchedulerTimeType.Stride = .seconds(1),
-                                shouldRunImmediately: Bool = true,
-                                shouldRunLatest: Bool = true,
-                                work: @escaping () -> Void)
+@available(macOS 13.0, *)
+@available(iOS 16.0, *)
+public func throttle(
+    _ interval: Duration = .seconds(1),
+    on actorType: ActorType = .main,
+    operation: @escaping () -> Void
+) {
+    let now = Date()
+    
+    if let lastExecution = lastExecutionDate, now.timeIntervalSince(lastExecution) < interval.timeInterval { return }
+    
+    lastExecutionDate = now
+    
+    Task {
+        actorType ~= .main ? await MainActor.run { operation() } : operation()
+    }
+}
 ```
 
 ### Installation
@@ -334,13 +408,6 @@ Pay special attention to the identifier parameter. the default identifier is \("
 ### Contact
 
 boraseoksoon@gmail.com
-<br>
-
-https://boraseoksoon.com
-<br>
-
-https://hlvm.co.kr
-<br>
 
 Pull requests are warmly welcome as well.
 
