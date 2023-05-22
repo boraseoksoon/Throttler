@@ -13,6 +13,7 @@ One Line to throttle, debounce and delay: Say Goodbye to Reactive Programming su
 # At a glance
 
 ```swift
+import Throttler
 
 /// throttle
 
@@ -153,6 +154,8 @@ struct ContentView: View {
 * Throttler
 
 ```swift
+import Throttler
+
 var sum = 0
 
 for i in 0...10 {
