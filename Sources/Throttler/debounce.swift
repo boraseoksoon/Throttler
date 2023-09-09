@@ -23,13 +23,19 @@ import Foundation
 
  - Example:
     ```swift
-    for i in 1...10000000 {
-        debounce(option: .runFirstImmediately) {
-            print("Run First Immediately \(i)")
+    /// Debounce Options
+
+    /// 1. Default: duration 1 sec and default debounce by default (not runFirstImmediately)
+    
+    for i in Array(0...100) {
+        debounce {
+            print("debounce : \(i)")
         }
     }
     
-    /// Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
+    // debounce : 100
+    
+    /// 2. RunFirstImmediately: Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
     
     for i in Array(0...100) {
         debounce(.seconds(2), option: .runFirstImmediately) {
