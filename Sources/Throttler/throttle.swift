@@ -22,7 +22,7 @@ import Foundation
    // Debounce a button tap action to prevent rapid execution.
    @IBAction func buttonTapped(_ sender: UIButton) {
        // Delay execution by a custom duration.
-       throttle(.duration(.milliseconds(500))) {
+       throttle(.milliseconds(500)) {
            print("Button tapped (throttled with custom duration)")
        }
        
