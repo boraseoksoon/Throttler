@@ -1,6 +1,6 @@
 //
 //  Throttler.swift
-//  DebounceTest
+//  Throttler
 //
 //  Created by seoksoon jang on 2023-09-08.
 //
@@ -41,7 +41,7 @@ let actor = Throttler()
 
 /// An actor for managing debouncing, throttling and delay operations designed to be the internal use.
 actor Throttler {
-    private var debounceTasksByIdentifier: [String: Task<(), Never>] = [:]
+    private var debounceTaskByIdentifier: [String: Task<(), Never>] = [:]
     private var lastThrottleRunDateByIdentifier: [String: Date] = [:]
     
     /// Debounces an operation, ensuring it's executed only after a specified time interval
@@ -67,15 +67,15 @@ actor Throttler {
     ) async {
         switch option {
         case .runFirstImmediately:
-            if debounceTasksByIdentifier[identifier] == nil {
+            if debounceTaskByIdentifier[identifier] == nil {
                 Task {
                     await actorType.run(operation)
                 }
             }
             fallthrough
         default:
-            debounceTasksByIdentifier[identifier]?.cancel()
-            debounceTasksByIdentifier[identifier] = {
+            debounceTaskByIdentifier[identifier]?.cancel()
+            debounceTaskByIdentifier[identifier] = {
                 Task {
                     try? await Task.sleep(for: duration)
                     
@@ -138,7 +138,7 @@ actor Throttler {
             
             await execute()
         case .lastGuaranteed:
-            await self.debounce(duration, identifier: identifier, on: actorType, operation: operation)
+            await debounce(duration, identifier: identifier, on: actorType, operation: operation)
             
             await execute()
         case .combined:
