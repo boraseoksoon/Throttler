@@ -18,20 +18,66 @@ import Foundation
    - operation: The operation to be executed when throttled.
 
  - Usage:
-   ```swift
-   // Debounce a button tap action to prevent rapid execution.
-   @IBAction func buttonTapped(_ sender: UIButton) {
-       // Delay execution by a custom duration.
-       throttle(.milliseconds(500)) {
-           print("Button tapped (throttled with custom duration)")
-       }
-       
-       // You can use custom identifiers to distinguish between throttled operations.
-       throttle(.seconds(3.0), identifier: "customIdentifier") {
-           print("Custom throttled operation")
-       }
-   }
-   ```
+```swift
+
+/// 1. Default: Executes the first operation immediately and then throttles subsequent calls for every 1 second.
+
+for i in 1...100000 {
+    throttle(option: .runFirstImmediately) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 1
+// throttle : 43584
+// throttle : 88485
+
+/// 2. RunFirstImmediately: Executes the first operation immediately and then throttles subsequent calls for every 1 second.
+
+for i in 1...100000 {
+    throttle(option: .runFirstImmediately) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 1
+// throttle : 43584
+// throttle : 88485
+
+/// 3. LastGuaranteed: Guarantees the last call no matter what even after a throttle duration and finished.
+
+for i in 1...100000 {
+    throttle(.seconds(2), option: .lastGuaranteed) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 16363
+// throttle : 52307
+// throttle : 74711
+// throttle : 95747
+// throttle : 100000
+
+// 4. Combined: Combine all (RunFirstImmediately + LastGuaranteed)
+
+import Throttler
+
+for i in 1...100000 {
+    throttle(option: .combined) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 1
+// throttle : 25045
+// throttle : 30309
+// throttle : 35717
+// throttle : 48059
+// throttle : 61806
+// throttle : 75336
+// throttle : 88585
+// throttle : 100000
+```
 */
 
 public func throttle(
