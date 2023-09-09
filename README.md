@@ -36,35 +36,7 @@ delay {
 - **Debounce**: Delay the execution of an operation until a certain time has passed without any more triggers.
 - **Delay**: Execute an operation after a certain amount of time.
 
-# 🚀 Advanced Features for Throttler
-
-Throttler stands out not just for its advanced features, but also for its incredibly simple-to-use API. Here's how it gives you more, right out of the box, with just a **one-liner closure**:
-
-#### Throttle Options
-
-1. **Default**: Standard throttling behavior without any fancy tricks. Simply include the throttle function with a one-liner closure, and you're good to go.
-2. **Run First Immediately**: Execute the first call instantly while throttling subsequent ones. Again, all it takes is a one-liner.
-3. **Last Guaranteed**: Ensures the last call within the interval gets executed. Just a single line of code.
-4. **Combined**: Enjoy the benefits of both 'Run First Immediately' and 'Last Guaranteed', all in one simple line.
-
-#### Debounce Options
-
-1. **Default**: Standard debounce behavior with just a one-liner closure. Include the debounce function, and it works like a charm.
-2. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later. All of this with a simple one-liner.
-
-With Throttler, you get these advanced options natively, without the need for custom boilerplate and manual works often required by frameworks like RxSwift and Combine. **Simplicity and power, all in a one-liner closure.**
-
-#### Debounce Options
-
-1. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later.
-
-#### Delay
-
-1. **Delay**: Simply delay the execution of an operation for a specified time.
-
-Unlike RxSwift and Combine, Throttler offers these advanced features natively, eliminating the need for custom configurations.
-
-# Basic Usage in SwiftUI
+# 💥 Basic Usage in SwiftUI
 
 Here's how you can quickly get started.
 
@@ -80,7 +52,7 @@ struct ContentView: View {
             // Throttle Example
             Button(action: {
                 for i in 1...10000000 {
-                    throttle(identifier: "ThrottleExample") {
+                    throttle {
                         print("Throttle \(i)")
                     }
                 }
@@ -102,7 +74,7 @@ struct ContentView: View {
             // Debounce Example
             Button(action: {
                 for i in 1...10000000 {
-                    debounce(.seconds(1), identifier: "DebounceExample") {
+                    debounce {
                         print("Debounce \(i)")
                     }
                 }
@@ -115,7 +87,25 @@ struct ContentView: View {
 }
 ```
 
-# 🌟 Advanced Options
+# 🚀 Advanced Features for Throttler
+
+Throttler stands out not just for its advanced features, but also for its incredibly simple-to-use API. Here's how it gives you more, right out of the box, with just a **one-liner closure**:
+
+#### Throttle Options
+
+1. **Default**: Standard throttling behavior without any fancy tricks. Simply include the throttle function with a one-liner closure, and you're good to go.
+2. **Run First Immediately**: Execute the first call instantly while throttling subsequent ones. Again, all it takes is a one-liner.
+3. **Last Guaranteed**: Ensures the last call within the interval gets executed. Just a single line of code.
+4. **Combined**: Enjoy the benefits of both 'Run First Immediately' and 'Last Guaranteed', all in one simple line.
+
+#### Debounce Options
+
+1. **Default**: Standard debounce behavior with just a one-liner closure. Include the debounce function, and it works like a charm.
+2. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later. All of this with a simple one-liner.
+
+With Throttler, you get these advanced options natively, without the need for custom boilerplate and manual works often required by frameworks like RxSwift and Combine. **Simplicity and power, all in a one-liner closure.**
+
+Unlike RxSwift and Combine, Throttler offers these advanced features natively, eliminating the need for custom configurations.
 
 - **ThrottleOptions**:
 
@@ -233,7 +223,7 @@ for i in 1...100000 {
     }
 }
 
-// throttle : 1        => 💥
+// throttle : 1         => 💥
 // throttle : 25045
 // throttle : 30309
 // throttle : 35717
@@ -255,7 +245,7 @@ When it comes to advanced features for throttling and debouncing, Throttler offe
 |-------------------|------------------|------------------|------------------|
 | Default Behavior  | ✅ One-liner      | Verbose           | Verbose           |
 | runFirstImmediately | ✅ One-liner    | ❌ Custom needed  | ❌ Custom needed  |
-| lastGuaranteed    | ✅ One-liner      | ❌ Custom needed  | Partial support but verbose |
+| lastGuaranteed    | ✅ One-liner      | ❌ Custom needed  | ✅ suported       |
 | combined          | ✅ One-liner      | ❌ Custom needed  | ❌ Custom needed  |
 
 ## Debounce Options
@@ -368,42 +358,42 @@ let cancellable3 = subject
 ✅
 ```swift 
 throttle {
-    print("throttle : \(i)")
+    print("hi")
 }
 ```
 
 ✅
 ```swift
 throttle(option: .runFirstImmediately) {
-    print("throttle : \(i)")
+    print("hi")
 }
 ```
 
 ✅
 ```swift
 throttle(option: .lastGuaranteed) {
-    print("throttle : \(i)")
+    print("hi")
 }
 ```
 
 ✅
 ```swift
 throttle(option: .combined) {
-    print("throttle : \(i)")
+    print("hi")
 }
 ```
 
 ✅
 ```
 debounce {
-    print("debounce : \(i)")
+    print("hi")
 }
 ```
 
 ✅
 ```swift
 debounce(option: .runFirstImmediately) {
-    print("debounce : \(i)")
+    print("hi")
 }
 ```
 
@@ -421,22 +411,40 @@ debounce(option: .runFirstImmediately) {
 
 ```swift
 
+// simple and come in handy by default
+
+throttle {
+    print("simple")
+}
+
+// recommended
+
 throttle(identifier: "custom_throttle_id") {
     print("This is a recommended way of using throttled.")
 }
 
+// simple and come in handy by default
+
+debounce {
+    print("simple")
+}
+
+// recommended
+
 debounce(.seconds(2), identifier: "custom_debounce_id") {
     print("This is a recommended way of using debounced.")
 }
+
 ```
 
 # Throttler V2.0.0 - Actor-based Update
 
 ## What's New in V2.0.0
 
-This version introduces actor-based concurrency for better performance and safer code execution. The previous versions used standard Swift methods for task management, but this release leverages the new actor model introduced in Swift 5.5.
+In favor of new Swift concurrency, this release completely relies on and leverages the new actor model introduced in Swift 5.5 for better performance and safer code execution.
+The previous versions that used standard Swift methods for task management such as GCD has been completely removed as deprecated to emphasize the use of the actor in a unified way.
 
-(Please be aware that the minimum version requirement has been raised to iOS 16.0, macOS 13.0, watchOS 9.0, and tvOS 16.0.)
+**(Please be aware that the minimum version requirement has been raised to iOS 16.0, macOS 13.0, watchOS 9.0, and tvOS 16.0.)**
 
 # Struct based (Deprecated)
 

@@ -18,48 +18,43 @@ import Foundation
    - operation: The operation to debounce. This is a closure that contains the code to be executed when the debounce conditions are met.
 
  - Note:
-   - Debouncing is a technique to limit the rate at which a function is called. It ensures that the operation is executed only once after a series of rapid calls within the specified duration.
    - The provided `identifier` is used to group related debounce operations. If multiple debounce calls share the same identifier, they will be considered as part of the same group, and the debounce behavior will apply collectively.
+   - This method ensures that the operation is executed in a thread-safe manner within the specified actor context.
 
  - Example:
-    ```swift
-    /// Debounce Options
-
-    /// 1. Default: duration 1 sec and default debounce by default (not runFirstImmediately)
-    
-    for i in Array(0...100) {
-        debounce {
-            print("debounce : \(i)")
-        }
-    }
-    
-    // debounce : 100
-    
-    /// 2. RunFirstImmediately: Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
-    
-    for i in Array(0...100) {
-        debounce(.seconds(2), option: .runFirstImmediately) {
-            print("debounce : \(i)")
-        }
-    }
-    
-    // debounce : 1
-    // debounce : 100
-    ```
+   ```swift
+   // Debounce a button tap action to prevent rapid execution.
+   @IBAction func buttonTapped(_ sender: UIButton) {
+       debounce {
+           print("Button tapped")
+       }
+ 
+       for _ in Array(0...1000) {
+           debounce(.microseconds(100), identifier: "your.identifier.0") {
+               print("hi")
+           }
+       }
+ 
+       for _ in Array(0...1000) {
+           debounce(.seconds(3.3), identifier: "your.identifier.1") {
+               print("hi")
+           }
+       }
+   }
  */
 
 public func debounce(
     _ duration: Duration = .seconds(1.0),
     identifier: String = "\(Thread.callStackSymbols)",
-    on actorType: ActorType = .main,
+    by `actor`: ActorType = .mainActor,
     option: DebounceOptions = .default,
     operation: @escaping () -> Void
 ) {
     Task {
-        await actor.debounce(
+        await throttler.debounce(
             duration,
             identifier: identifier,
-            on: actorType,
+            by: actor,
             option: option,
             operation: operation
         )

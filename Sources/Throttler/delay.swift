@@ -11,17 +11,15 @@ import Foundation
  Delays the execution of a provided operation by a specified time duration.
 
  - Parameters:
-   - duration: Foundation `Duration` type such as .seconds(2.0). By default, .seconds(1.0)
+   - duration: Foundation `Duration` type such sa .seconds(2.0). By default, .seconds(1.0)
    - actorType: The actor type on which the operation should be executed (default is `.main`).
    - operation: The operation to be executed after the delay.
-
+ 
  - Note:
-   - The `delay` function is non-blocking, meaning it will not hold up the main thread (or the thread it's invoked on if you specify a different `actorType`).
-   - The delayed operation will be executed asynchronously, after the specified duration has passed.
-   - Use this function cautiously to avoid creating race conditions or other timing-related issues in your code.
+   - The provided `identifier` is used to group related debounce operations. If multiple debounce calls share the same identifier, they will be considered as part of the same group, and the debounce behavior will apply collectively.
+   - This method ensures that the operation is executed in a thread-safe manner within the specified actor context.
 
- - Example:
-
+ - Usage:
     ```swift
     // Delay execution by 2 seconds using a custom duration.
     delay(.seconds(2)) {
@@ -33,18 +31,14 @@ import Foundation
         print("Another delayed operation")
     }
     ```
-*/
+ */
 
 public func delay(
     _ duration: Duration = .seconds(1.0),
-    on actorType: ActorType = .main,
+    by `actor`: ActorType = .mainActor,
     operation: @escaping () -> Void
 ) {
     Task {
-        await actor.delay(
-            duration,
-            on: actorType,
-            operation: operation
-        )
+        await throttler.delay(duration, by: actor, operation: operation)
     }
 }

@@ -28,21 +28,21 @@ public enum ThrottleOptions {
 }
 
 public enum ActorType {
-    case current
-    case main
+    case currentActor
+    case mainActor
     
     @Sendable func run(_ operation: () -> Void) async {
-        self == .main ? await MainActor.run { operation() } : operation()
+        self == .mainActor ? await MainActor.run { operation() } : operation()
     }
 }
 
 /// a global actor variable for free functions (delay, debounce, throttle) to rely on. (internal use only)
-let actor = Throttler()
+let throttler = Throttler()
 
 /// An actor for managing debouncing, throttling and delay operations designed to be the internal use.
 actor Throttler {
-    private var debounceTaskByIdentifier: [String: Task<(), Never>] = [:]
-    private var lastThrottleRunDateByIdentifier: [String: Date] = [:]
+    private var cachedTask: [String: Task<(), Never>] = [:]
+    private var lastAttemptDate: [String: Date] = [:]
     
     /// Debounces an operation, ensuring it's executed only after a specified time interval
     /// has passed since the last call.
@@ -61,27 +61,23 @@ actor Throttler {
     func debounce(
         _ duration: Duration = .seconds(1.0),
         identifier: String = "\(Thread.callStackSymbols)",
-        on actorType: ActorType = .main,
+        by `actor`: ActorType = .mainActor,
         option: DebounceOptions = .default,
         operation: @escaping () -> Void
     ) async {
         switch option {
         case .runFirstImmediately:
-            if debounceTaskByIdentifier[identifier] == nil {
-                Task {
-                    await actorType.run(operation)
-                }
+            if cachedTask[identifier] == nil {
+                Task { await actor.run(operation) }
             }
             fallthrough
         default:
-            debounceTaskByIdentifier[identifier]?.cancel()
-            debounceTaskByIdentifier[identifier] = {
+            cachedTask[identifier]?.cancel()
+            cachedTask[identifier] = {
                 Task {
                     try? await Task.sleep(for: duration)
-                    
                     guard !Task.isCancelled else { return }
-                    
-                    await actorType.run(operation)
+                    await actor.run(operation)
                 }
             }()
         }
@@ -103,52 +99,45 @@ actor Throttler {
     public func throttle(
         _ duration: Duration = .seconds(1.0),
         identifier: String = "\(Thread.callStackSymbols)",
-        on actorType: ActorType = .main,
+        by actor: ActorType = .mainActor,
         option: ThrottleOptions = .default,
         operation: @escaping () -> Void
     ) async {
-        let now = Date()
+        let lastAttemptDate = lastAttemptDate[identifier] ?? Date.distantPast
         
-        let execute = {
-            let lastRunDate = self.lastThrottleRunDateByIdentifier[identifier] ?? Date.distantPast
-            
-            if now.timeIntervalSince(lastRunDate) >= duration.timeInterval {
-                self.lastThrottleRunDateByIdentifier[identifier] = Date()
-
+        let run = {
+            if Date().timeIntervalSince(lastAttemptDate) >= duration.timeInterval {
+                self.lastAttemptDate[identifier] = Date()
+                
                 try? await Task.sleep(for: duration)
                 
                 guard !Task.isCancelled else { return }
                 
-                await actorType.run(operation)
-                
-                self.lastThrottleRunDateByIdentifier[identifier] = nil
+                await actor.run(operation)
+                self.lastAttemptDate[identifier] = nil
             }
         }
         
-        let runFirstImmediately = {
-            guard self.lastThrottleRunDateByIdentifier[identifier] == nil else { return }
+        let mayRunImmediately = {
+            guard self.lastAttemptDate[identifier] == nil else { return }
             
-            self.lastThrottleRunDateByIdentifier[identifier] = Date()
+            self.lastAttemptDate[identifier] = Date()
             operation()
         }
         
         switch option {
         case .runFirstImmediately:
-            runFirstImmediately()
-            
-            await execute()
+            mayRunImmediately()
+            await run()
         case .lastGuaranteed:
-            await debounce(duration, identifier: identifier, on: actorType, operation: operation)
-            
-            await execute()
+            await debounce(duration, identifier: identifier, by: actor, operation: operation)
+            await run()
         case .combined:
-            runFirstImmediately()
-
-            await debounce(duration, identifier: identifier, on: actorType, operation: operation)
-            
-            await execute()
+            mayRunImmediately()
+            await debounce(duration, identifier: identifier, by: actor, operation: operation)
+            await run()
         default:
-            await execute()
+            await run()
         }
     }
 
@@ -163,11 +152,11 @@ actor Throttler {
     ///         within the specified actor context.
     public func delay(
         _ duration: Duration = .seconds(1.0),
-        on actorType: ActorType = .main,
+        by `actor`: ActorType = .mainActor,
         operation: @escaping () -> Void
     ) async {
         try? await Task.sleep(for: duration)
-        await actorType.run(operation)
+        await actor.run(operation)
     }
 }
 
