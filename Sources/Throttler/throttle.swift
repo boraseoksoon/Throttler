@@ -11,7 +11,7 @@ import Foundation
  Limits the frequency of executing a given operation to ensure it is not called more frequently than a specified duration.
 
  - Parameters:
-   - duration: A `TimeDuration` value representing the minimum time interval between operation executions. You can use `.duration` with custom time intervals or `.seconds` with seconds as the interval.
+   - duration: Foundation `Duration` type such sa .seconds(2.0). By default, .seconds(1.0)
    - identifier: (Optional) An identifier to distinguish between throttled operations. It is highly recommended to provide a custom identifier for clarity and to avoid potential issues with long call stack symbols. Use at your own risk with internal stack traces.
    - actorType: The actor type on which the operation should be executed (default is `.main`).
    - option: An option to customize the behavior of the throttle (default is `.default`).
