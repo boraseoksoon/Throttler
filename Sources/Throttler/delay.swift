@@ -11,14 +11,14 @@ import Foundation
  Delays the execution of a provided operation by a specified time duration.
 
  - Parameters:
-   - interval: A `TimeDuration` value representing the duration of the delay. You can use `.duration` with custom time intervals or `.seconds` with seconds as the interval.
+   - duration: Foundation `Duration` type such sa .seconds(2.0). By default, .seconds(1.0)
    - actorType: The actor type on which the operation should be executed (default is `.main`).
    - operation: The operation to be executed after the delay.
 
  - Usage:
     ```swift
     // Delay execution by 2 seconds using a custom duration.
-    delay(.duration(.seconds(2))) {
+    delay(.seconds(2)) {
         print("Delayed operation")
     }
     
@@ -30,13 +30,13 @@ import Foundation
  */
 
 public func delay(
-    _ interval: Duration = .seconds(1.0),
+    _ duration: Duration = .seconds(1.0),
     on actorType: ActorType = .main,
     operation: @escaping () -> Void
 ) {
     Task {
         await actor.delay(
-            interval,
+            duration,
             on: actorType,
             operation: operation
         )
