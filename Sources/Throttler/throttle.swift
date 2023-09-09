@@ -20,6 +20,8 @@ import Foundation
  - Usage:
 ```swift
 
+/// Throttle Options
+
 /// 1. Default: Executes the first operation immediately and then throttles subsequent calls for every 1 second.
 
 for i in 1...100000 {
