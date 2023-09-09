@@ -28,20 +28,25 @@ import Foundation
        // Basic debounce with default options
  
        debounce {
-           print("Button tapped (debounced with default option)")
+           print("hi")
        }
 
        // Using custom identifiers
  
-       debounce(.seconds(1.0), identifier: "customIdentifier") {
-           print("Custom debounced operation with identifier")
+       debounce(identifier: "customIdentifier") {
+           print("recommended way")
        }
        
        // Using 'runFirst' option to execute the first operation immediately and debounce the rest
  
-       debounce(.seconds(1.0), identifier: "runFirstExample", option: .runFirst) {
-           print("Debounced operation using runFirst option")
-       }
+         for i in Array(0...100) {
+             debounce(.seconds(2), option: .runFirst) {
+                 print("debounce : \(i)")
+             }
+         }
+
+         // debounce : 1        => 💥
+         // debounce : 100
    }
    ```
 

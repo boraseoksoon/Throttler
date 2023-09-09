@@ -45,43 +45,38 @@ import SwiftUI
 import Throttler
 
 struct ContentView: View {
-
     var body: some View {
-        VStack(spacing: 20) {
-
-            // Throttle Example
+        VStack {
             Button(action: {
                 for i in 1...10000000 {
                     throttle {
-                        print("Throttle \(i)")
+                        print("throttle: \(i)")
                     }
                 }
             }) {
-                Text("Throttle")
+                Text("throttle")
             }
-            // Expected Output: Will print "Throttle" every 1 second (by default)
+            // Expected Output: Will print "throttle : \(i)" every 1 second (by default)
 
-            // Delay Example
             Button(action: {
-                delay(.seconds(2)) {
-                    print("Delayed 2 seconds")
+                delay {
+                    print("delayed 2 seconds")
                 }
             }) {
-                Text("Delay")
+                Text("delay")
             }
             // Expected Output: Will print "Delayed 2 seconds" after 2 seconds
 
-            // Debounce Example
             Button(action: {
                 for i in 1...10000000 {
                     debounce {
-                        print("Debounce \(i)")
+                        print("debounce \(i)")
                     }
                 }
             }) {
-                Text("Debounce")
+                Text("debounce")
             }
-            // Expected Output: Will print "Debounce" only after the button has not been clicked for 1 second
+            // Expected Output: Will print "debounce" only after the button has not been clicked for 1 second
         }
     }
 }
@@ -466,7 +461,7 @@ The previous versions that used standard Swift methods for task management such 
 
 # Struct based (Deprecated)
 
-As of V2.0.0, struct based way is removed as deprecated in favor of Swift actor type. 
+As of V2.0.0, struct based way was removed as deprecated in favor of Swift actor type. 
 Please migrate to functions. (throttle, debounce and delay) 
 
 # Requirements
@@ -477,11 +472,11 @@ iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ## Swift Package Manager
 
-To use the latest V2.0.0 version, add the package to your `Package.swift`:
+To use the latest V2.0.9 version, add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/YourRepo/Throttler.git", .upToNextMajor(from: "2.0.0"))
+    .package(url: "https://github.com/YourRepo/Throttler.git", .upToNextMajor(from: "2.0.9"))
 ]
 ```
 
