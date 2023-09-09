@@ -147,7 +147,6 @@ actor Throttler {
             await debounce(duration, identifier: identifier, on: actorType, operation: operation)
             
             await execute()
-            
         default:
             await execute()
         }
