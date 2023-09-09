@@ -381,7 +381,7 @@ click1 : 1 :  {
 ## Advantages over Combine and RxSwift's Throttle and Debounce
 
 - **Simple One-Liners**: The functions are straightforward and ready to use right out of the box. Just include a single line of code to get them up and running.
-- **Advanced debounce and throttler options **: see examples above - they can often come handy.
+- **Advanced debounce and throttler options**: See examples above - they can often come handy.
 - **No Need for Reactive Programming**: If you're not a fan of reactive programming paradigms, this approach offers an alternative that eliminates the need to adopt them
 
 ## Requirements
