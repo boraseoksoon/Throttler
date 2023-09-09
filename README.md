@@ -93,15 +93,15 @@ Throttler stands out not just for its advanced features, but also for its incred
 
 #### Throttle Options
 
-1. **Default**: Standard throttling behavior without any fancy tricks. Simply include the throttle function with a one-liner closure, and you're good to go.
-2. **Run First Immediately**: Execute the first call instantly while throttling subsequent ones. Again, all it takes is a one-liner.
-3. **Last Guaranteed**: Ensures the last call within the interval gets executed. Just a single line of code.
-4. **Combined**: Enjoy the benefits of both 'Run First Immediately' and 'Last Guaranteed', all in one simple line.
+1. **default**: Standard throttling behavior without any fancy tricks. Simply include the throttle function with a one-liner closure, and you're good to go.
+2. **runFirst**: Execute the first call instantly while throttling subsequent ones. Again, all it takes is a one-liner.
+3. **ensureLast**: Ensures the last call within the interval gets executed. Just a single line of code.
+4. **combined**: Enjoy the benefits of both 'Run First Immediately' and 'ensureLast', all in one simple line.
 
 #### Debounce Options
 
-1. **Default**: Standard debounce behavior with just a one-liner closure. Include the debounce function, and it works like a charm.
-2. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later. All of this with a simple one-liner.
+1. **default**: Standard debounce behavior with just a one-liner closure. Include the debounce function, and it works like a charm.
+2. **runFirst**: Get instant feedback with the first call executed immediately, then debounce later. All of this with a simple one-liner.
 
 With Throttler, you get these advanced options natively, without the need for custom boilerplate and manual works often required by frameworks like RxSwift and Combine. **Simplicity and power, all in a one-liner closure.**
 
@@ -109,22 +109,22 @@ Unlike RxSwift and Combine, Throttler offers these advanced features natively, e
 
 - **ThrottleOptions**:
 
-Default: The standard throttle behavior.
-RunFirstImmediately: Executes the operation immediately, then throttles subsequent calls.
-LastGuaranteed: Ensures that the last call is executed.
-Combined: Combines both RunFirstImmediately and LastGuaranteed.
+default: The standard throttle behavior.
+runFirst: Executes the operation immediately, then throttles subsequent calls.
+ensureLast: Ensures that the last call is executed.
+combined: Combines both runFirst and ensureLast.
 
 - **DebounceOptions**:
 
-Default: The standard debounce behavior.
-RunFirstImmediately: Executes the operation immediately, then debounces subsequent calls.
+default: The standard debounce behavior.
+runFirst: Executes the operation immediately, then debounces subsequent calls.
 
 ## DebounceOptions
 
-1. **Default**: The standard debounce behavior by default.
+1. **default**: The standard debounce behavior by default.
 
 ```swift
-/// by default: duration 1 sec and default debounce (not runFirstImmediately)
+/// by default: duration 1 sec and default debounce (not runFirst)
 
 for i in Array(0...100) {
     debounce {
@@ -135,13 +135,13 @@ for i in Array(0...100) {
 // debounce : 100
 ```
 
-2. **RunFirstImmediately**: Executes the operation immediately, then debounces subsequent calls.
+2. **runFirst**: Executes the operation immediately, then debounces subsequent calls.
 
 ```swift
 /// Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
 
 for i in Array(0...100) {
-    debounce(.seconds(2), option: .runFirstImmediately) {
+    debounce(.seconds(2), option: .runFirst) {
         print("debounce : \(i)")
     }
 }
@@ -154,7 +154,7 @@ for i in Array(0...100) {
 
 #### Options Explained
 
-1. **Default**: The standard throttle behavior.
+1. **default**: The standard throttle behavior.
 
 ```swift
 
@@ -171,14 +171,14 @@ for i in 1...100000 {
 
 ```
 
-2. **RunFirstImmediately**: Executes the operation immediately, then throttles subsequent calls.
+2. **runFirst**: Executes the operation immediately, then throttles subsequent calls.
 
 ```swift
 
 /// Executes the first operation immediately and then throttles subsequent calls for every 1 second.
 
 for i in 1...100000 {
-    throttle(option: .runFirstImmediately) {
+    throttle(option: .runFirst) {
         print("throttle : \(i)")
     }
 }
@@ -186,17 +186,16 @@ for i in 1...100000 {
 // throttle : 1        => 💥
 // throttle : 43584
 // throttle : 88485
-
 ```
 
-3. **LastGuaranteed**: Guarantees that the last call within the interval will be executed.
+3. **ensureLast**: Guarantees that the last call within the interval will be executed.
 
 ```swift
 
 /// Guarantees the last call no matter what even after a throttle duration and finished.
 
 for i in 1...100000 {
-    throttle(.seconds(2), option: .lastGuaranteed) {
+    throttle(option: .ensureLast) {
         print("throttle : \(i)")
     }
 }
@@ -209,7 +208,7 @@ for i in 1...100000 {
 
 ```
 
-4. **Combined**: Combines both `RunFirstImmediately` and `LastGuaranteed`.
+4. **combined**: Combines both `runFirst` and `ensureLast`.
 
 ```swift
 
@@ -235,28 +234,16 @@ for i in 1...100000 {
 
 ```
 
-# 🌟 Feature Comparison: Throttler vs. RxSwift vs. Combine
-
-When it comes to advanced features for throttling and debouncing, Throttler offers simplicity and out-of-the-box support. Here's a detailed comparison:
-
-## Throttle Options
+## 🌟 Feature Comparison: Throttler vs. RxSwift vs. Combine
 
 | Feature           | Throttler        | RxSwift          | Combine          |
 |-------------------|------------------|------------------|------------------|
 | Default Behavior  | ✅ One-liner      | Verbose           | Verbose           |
-| runFirstImmediately | ✅ One-liner    | ❌ Custom needed  | ❌ Custom needed  |
-| lastGuaranteed    | ✅ One-liner      | ❌ Custom needed  | ✅ suported       |
-| combined          | ✅ One-liner      | ❌ Custom needed  | ❌ Custom needed  |
+| RunFirst          | ✅ One-liner      | ❌ Custom needed  | ❌ Custom needed  |
+| EnsureLast        | ✅ One-liner      | ❌ Custom needed  | ✅ Supported      |
+| Combined          | ✅ One-liner      | ❌ Custom needed  | ❌ Custom needed  |
 
-## Debounce Options
-
-| Feature           | Throttler        | RxSwift          | Combine          |
-|-------------------|------------------|------------------|------------------|
-| Default Behavior  | ✅ One-liner      | Verbose           | Verbose           |
-| runFirstImmediately | ✅ One-liner    | ❌ Custom needed  | ❌ Custom needed  |
-
-Throttler makes it extremely easy to use advanced features with just a one-liner, unlike RxSwift and Combine where custom implementations are often required.
-
+Throttler makes it extremely simple and easy to use advanced features with just a one-liner, unlike RxSwift and Combine where custom implementations are often required.
 
 # Comparison with RxSwift and Combine for the advanced options in code
 
@@ -273,20 +260,20 @@ let subject = PublishSubject<Int>()
 subject
     .throttle(.milliseconds(500), scheduler: MainScheduler.instance)
     .subscribe(onNext: { 
-        print("Default throttle: \($0)") 
+        print("default throttle: \($0)") 
     })
     .disposed(by: disposeBag)
 
-// runFirstImmediately ❌:
+// runFirst ❌:
     // RxSwift's throttle doesn't support this out-of-the-box. 
     // Custom implementation needed.
 
-// lastGuaranteed ❌: 
+// ensureLast ❌: 
     // The throttle operation in RxSwift doesn't guarantee last emission. 
     // Custom implementation needed.
 
 // combined ❌:
-    // Custom implementation needed combining RunFirstImmediately and LastGuaranteed.
+    // Custom implementation needed combining runFirst and ensureLast.
 ```
 
 #### Debounce options
@@ -297,11 +284,11 @@ subject
 subject
     .debounce(.milliseconds(500), scheduler: MainScheduler.instance)
     .subscribe(onNext: { 
-        print("Default debounce: \($0)") 
+        print("default debounce: \($0)") 
     })
     .disposed(by: disposeBag)
 
-// runFirstImmediately ❌
+// runFirst ❌
     // RxSwift's debounce doesn't support this out-of-the-box.
     // Custom implementation needed.
 ```
@@ -318,18 +305,18 @@ let subject = PassthroughSubject<Int, Never>()
 let cancellable1 = subject
     .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
     .sink { 
-        print("Default throttle: \($0)") 
+        print("default throttle: \($0)") 
     }
 
-// runFirstImmediately ❌
+// runFirst ❌
     // Combine's throttle doesn't support this out-of-the-box. 
     // Custom implementation needed.
 
-// lastGuaranteed ✅ 
+// ensureLast ✅
 let cancellable2 = subject
     .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: false)
     .sink { 
-        print("LastGuaranteed throttle: \($0)") 
+        print("ensureLast throttle: \($0)") 
     }
 
 // combined ❌
@@ -345,10 +332,10 @@ let cancellable2 = subject
 let cancellable3 = subject
     .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
     .sink { 
-        print("Default debounce: \($0)") 
+        print("default debounce: \($0)") 
     }
 
-// runFirstImmediately
+// runFirst
     // combine's debounce doesn't support this out-of-the-box. 
     // Custom implementation needed.
 ```
@@ -364,23 +351,49 @@ throttle {
 
 ✅
 ```swift
-throttle(option: .runFirstImmediately) {
-    print("hi")
+for i in 1...100000 {
+    throttle(option: .runFirst) {
+        print("throttle : \(i)")
+    }
 }
+
+// throttle : 1        => 💥
+// throttle : 43584
+// throttle : 88485
 ```
 
 ✅
 ```swift
-throttle(option: .lastGuaranteed) {
-    print("hi")
+for i in 1...100000 {
+    throttle(option: .ensureLast) {
+        print("throttle : \(i)")
+    }
 }
+
+// throttle : 16363 
+// throttle : 52307
+// throttle : 74711
+// throttle : 95747
+// throttle : 100000    => 💥
 ```
 
 ✅
 ```swift
-throttle(option: .combined) {
-    print("hi")
+for i in 1...100000 {
+    throttle(option: .combined) {
+        print("throttle : \(i)")
+    }
 }
+
+// throttle : 1         => 💥
+// throttle : 25045
+// throttle : 30309
+// throttle : 35717
+// throttle : 48059
+// throttle : 61806
+// throttle : 75336
+// throttle : 88585
+// throttle : 100000    => 💥
 ```
 
 ✅
@@ -392,9 +405,14 @@ debounce {
 
 ✅
 ```swift
-debounce(option: .runFirstImmediately) {
-    print("hi")
+for i in Array(0...100) {
+    debounce(option: .runFirst) {
+        print("debounce : \(i)")
+    }
 }
+
+// debounce : 1        => 💥
+// debounce : 100
 ```
 
 # Advantages over Combine and RxSwift's Throttle and Debounce

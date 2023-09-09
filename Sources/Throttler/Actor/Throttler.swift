@@ -9,22 +9,16 @@ import Foundation
 
 /// Options for debouncing an operation.
 public enum DebounceOptions {
-    /// The default debounce behavior.
-    case `default`
-    /// Run the operation immediately and debounce subsequent calls.
-    case runFirstImmediately
+    case `default`         /// The default debounce behavior.
+    case runFirst          /// Run the operation immediately and debounce subsequent calls.
 }
 
 /// Options for throttling an operation.
 public enum ThrottleOptions {
-    /// The default throttle behavior.
-    case `default`
-    /// Run the operation immediately and throttle subsequent calls.
-    case runFirstImmediately
-    /// Guarantee that the last call is executed even if it's after the throttle time.
-    case lastGuaranteed
-    /// Combine both runFirstImmediately and lastGuaranteed behaviors.
-    case combined
+    case `default`         /// The default throttle behavior.
+    case runFirst          /// Run the operation immediately and throttle subsequent calls.
+    case ensureLast        /// Guarantee that the last call is executed even if it's after the throttle time.
+    case combined          /// Combine both runFirst and ensureLast behaviors.
 }
 
 public enum ActorType {
@@ -41,8 +35,8 @@ let throttler = Throttler()
 
 /// An actor for managing debouncing, throttling and delay operations designed to be the internal use.
 actor Throttler {
-    private var cachedTask: [String: Task<(), Never>] = [:]
-    private var lastAttemptDate: [String: Date] = [:]
+    private lazy var cachedTask: [String: Task<(), Never>] = [:]
+    private lazy var lastAttemptDate: [String: Date] = [:]
     
     /// Debounces an operation, ensuring it's executed only after a specified time interval
     /// has passed since the last call.
@@ -53,11 +47,12 @@ actor Throttler {
     ///                 to use your own identifier for better control, but you can use the default
     ///                 which is based on the call stack symbols (use at your own risk).
     ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The debounce option (default or runFirstImmediately).
+    ///   - option: The debounce option (default or runFirst).
     ///   - operation: The operation to debounce.
     ///
     /// - Note: This method ensures that the operation is executed in a thread-safe manner
     ///         within the specified actor context.
+    
     func debounce(
         _ duration: Duration = .seconds(1.0),
         identifier: String = "\(Thread.callStackSymbols)",
@@ -66,7 +61,7 @@ actor Throttler {
         operation: @escaping () -> Void
     ) async {
         switch option {
-        case .runFirstImmediately:
+        case .runFirst:
             if cachedTask[identifier] == nil {
                 Task { await actor.run(operation) }
             }
@@ -91,53 +86,54 @@ actor Throttler {
     ///                 to use your own identifier for better control, but you can use the default
     ///                 which is based on the call stack symbols (use at your own risk).
     ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The throttle option (default or runFirstImmediately).
+    ///   - option: The throttle option (default or runFirst).
     ///   - operation: The operation to throttle.
     ///
     /// - Note: This method ensures that the operation is executed in a thread-safe manner
     ///         within the specified actor context.
-    public func throttle(
+    
+    func throttle(
         _ duration: Duration = .seconds(1.0),
         identifier: String = "\(Thread.callStackSymbols)",
         by actor: ActorType = .mainActor,
         option: ThrottleOptions = .default,
         operation: @escaping () -> Void
     ) async {
-        let lastAttemptDate = lastAttemptDate[identifier] ?? Date.distantPast
+        let lastDate = lastAttemptDate[identifier]
+        let lastTimeInterval = Date().timeIntervalSince(lastDate ?? .distantPast)
         
-        let run = {
-            if Date().timeIntervalSince(lastAttemptDate) >= duration.timeInterval {
+        let throttleRun = {
+            if lastTimeInterval >= duration.timeInterval {
                 self.lastAttemptDate[identifier] = Date()
                 
                 try? await Task.sleep(for: duration)
-                
                 guard !Task.isCancelled else { return }
-                
                 await actor.run(operation)
+                
                 self.lastAttemptDate[identifier] = nil
             }
         }
         
-        let mayRunImmediately = {
-            guard self.lastAttemptDate[identifier] == nil else { return }
+        let runOnce = {
+            guard lastDate == nil else { return }
             
             self.lastAttemptDate[identifier] = Date()
             operation()
         }
         
         switch option {
-        case .runFirstImmediately:
-            mayRunImmediately()
-            await run()
-        case .lastGuaranteed:
+        case .runFirst:
+            runOnce()
+            await throttleRun()
+        case .ensureLast:
             await debounce(duration, identifier: identifier, by: actor, operation: operation)
-            await run()
+            await throttleRun()
         case .combined:
-            mayRunImmediately()
+            runOnce()
             await debounce(duration, identifier: identifier, by: actor, operation: operation)
-            await run()
+            await throttleRun()
         default:
-            await run()
+            await throttleRun()
         }
     }
 
@@ -150,7 +146,8 @@ actor Throttler {
     ///
     /// - Note: This method ensures that the operation is executed in a thread-safe manner
     ///         within the specified actor context.
-    public func delay(
+    
+    func delay(
         _ duration: Duration = .seconds(1.0),
         by `actor`: ActorType = .mainActor,
         operation: @escaping () -> Void
