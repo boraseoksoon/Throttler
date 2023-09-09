@@ -15,7 +15,8 @@ import Foundation
    - actorType: The actor type on which the operation should be executed (default is `.main`).
    - operation: The operation to be executed after the delay.
 
- - Usage:
+ - Example:
+
     ```swift
     // Delay execution by 2 seconds using a custom duration.
     delay(.seconds(2)) {
