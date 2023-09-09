@@ -11,7 +11,7 @@ import Foundation
  Debounce Function
 
  - Parameters:
-   - duration: The time duration for which to debounce the operation. It specifies the time interval during which repeated calls to the operation will be ignored.
+   - duration: Foundation `Duration` type such sa .seconds(2.0). By default, .seconds(1.0)
    - identifier: A unique identifier for this debounce operation. By default, it uses the call stack symbols as the identifier. You can provide a custom identifier to group related debounce operations. It is highly recommended to use your own identifier to avoid unexpected behavior, but you can use the internal stack trace identifier at your own risk.
    - actorType: The actor context in which to run the operation. Use `.main` to run the operation on the main actor or `.current` for the current actor context.
    - option: The debounce option to control the behavior of the debounce operation. You can choose between `.default` and `.runFirstImmediately`. The default behavior delays the operation execution by the specified duration, while `runFirstImmediately` executes the operation immediately and applies debounce to subsequent calls.
@@ -30,7 +30,7 @@ import Foundation
        }
  
        for _ in Array(0...1000) {
-           debounce(.duration(.microseconds(100)), identifier: "your.identifier.0") {
+           debounce(.microseconds(100), identifier: "your.identifier.0") {
                print("hi")
            }
        }
