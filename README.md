@@ -148,12 +148,6 @@ for i in Array(0...100) {
 2. **RunFirstImmediately**: Executes the operation immediately, then debounces subsequent calls.
 
 ```swift
-for i in 1...10000000 {
-    debounce(option: .runFirstImmediately) {
-        print("Run First Immediately \(i)")
-    }
-}
-
 /// Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
 
 for i in Array(0...100) {
@@ -162,7 +156,7 @@ for i in Array(0...100) {
     }
 }
 
-// debounce : 1
+// debounce : 1        => 💥
 // debounce : 100
 ```
 
@@ -199,7 +193,7 @@ for i in 1...100000 {
     }
 }
 
-// throttle : 1
+// throttle : 1        => 💥
 // throttle : 43584
 // throttle : 88485
 
@@ -217,11 +211,11 @@ for i in 1...100000 {
     }
 }
 
-// throttle : 16363
+// throttle : 16363 
 // throttle : 52307
 // throttle : 74711
 // throttle : 95747
-// throttle : 100000
+// throttle : 100000    => 💥
 
 ```
 
@@ -239,7 +233,7 @@ for i in 1...100000 {
     }
 }
 
-// throttle : 1
+// throttle : 1        => 💥
 // throttle : 25045
 // throttle : 30309
 // throttle : 35717
@@ -247,7 +241,7 @@ for i in 1...100000 {
 // throttle : 61806
 // throttle : 75336
 // throttle : 88585
-// throttle : 100000
+// throttle : 100000    => 💥
 
 ```
 
