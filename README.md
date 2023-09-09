@@ -30,15 +30,41 @@ delay {
 
 ```
 
-# Throttler V2.0.0 - Actor-based Update
+# 🌟 Features
 
-## What's New in V2.0.0
+- **Throttle**: Limit how often an operation can be triggered over time.
+- **Debounce**: Delay the execution of an operation until a certain time has passed without any more triggers.
+- **Delay**: Execute an operation after a certain amount of time.
 
-This version introduces actor-based concurrency for better performance and safer code execution. The previous versions used standard Swift methods for task management, but this release leverages the new actor model introduced in Swift 5.5.
+# 🚀 Advanced Features for Throttler
 
-(Please be aware that the minimum version requirement has been raised to iOS 16.0, macOS 13.0, watchOS 9.0, and tvOS 16.0.)
+Throttler stands out not just for its advanced features, but also for its incredibly simple-to-use API. Here's how it gives you more, right out of the box, with just a **one-liner closure**:
 
-## Basic Usage in SwiftUI
+#### Throttle Options
+
+1. **Default**: Standard throttling behavior without any fancy tricks. Simply include the throttle function with a one-liner closure, and you're good to go.
+2. **Run First Immediately**: Execute the first call instantly while throttling subsequent ones. Again, all it takes is a one-liner.
+3. **Last Guaranteed**: Ensures the last call within the interval gets executed. Just a single line of code.
+4. **Combined**: Enjoy the benefits of both 'Run First Immediately' and 'Last Guaranteed', all in one simple line.
+
+#### Debounce Options
+
+1. **Default**: Standard debounce behavior with just a one-liner closure. Include the debounce function, and it works like a charm.
+2. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later. All of this with a simple one-liner.
+
+With Throttler, you get these advanced options natively, without the need for custom boilerplate and manual works often required by frameworks like RxSwift and Combine. **Simplicity and power, all in a one-liner closure.**
+
+#### Debounce Options
+
+1. **Run First Immediately**: Get instant feedback with the first call executed immediately, then debounce later.
+
+#### Delay
+
+1. **Delay**: Simply delay the execution of an operation for a specified time.
+
+Unlike RxSwift and Combine, Throttler offers these advanced features natively, eliminating the need for custom configurations.
+
+# Basic Usage in SwiftUI
 
 Here's how you can quickly get started.
 
@@ -88,6 +114,20 @@ struct ContentView: View {
     }
 }
 ```
+
+# 🌟 Advanced Options
+
+- **ThrottleOptions**:
+
+Default: The standard throttle behavior.
+RunFirstImmediately: Executes the operation immediately, then throttles subsequent calls.
+LastGuaranteed: Ensures that the last call is executed.
+Combined: Combines both RunFirstImmediately and LastGuaranteed.
+
+- **DebounceOptions**:
+
+Default: The standard debounce behavior.
+RunFirstImmediately: Executes the operation immediately, then debounces subsequent calls.
 
 ## DebounceOptions
 
@@ -211,9 +251,177 @@ for i in 1...100000 {
 
 ```
 
-## :warning: Important Note on Identifiers parameters for debounce and throttle
+# 🌟 Feature Comparison: Throttler vs. RxSwift vs. Combine
 
-> **Highly Recommended**: While the functions do work out of the box without specifying an identifier, it is **strongly recommended** to provide a custom identifier for `debounce` and `throttle` operations for better control and organization.
+When it comes to advanced features for throttling and debouncing, Throttler offers simplicity and out-of-the-box support. Here's a detailed comparison:
+
+## Throttle Options
+
+| Feature           | Throttler        | RxSwift          | Combine          |
+|-------------------|------------------|------------------|------------------|
+| Default Behavior  | ✅ One-liner      | Verbose           | Verbose           |
+| runFirstImmediately | ✅ One-liner    | ❌ Custom needed  | ❌ Custom needed  |
+| lastGuaranteed    | ✅ One-liner      | ❌ Custom needed  | Partial support but verbose |
+| combined          | ✅ One-liner      | ❌ Custom needed  | ❌ Custom needed  |
+
+## Debounce Options
+
+| Feature           | Throttler        | RxSwift          | Combine          |
+|-------------------|------------------|------------------|------------------|
+| Default Behavior  | ✅ One-liner      | Verbose           | Verbose           |
+| runFirstImmediately | ✅ One-liner    | ❌ Custom needed  | ❌ Custom needed  |
+
+Throttler makes it extremely easy to use advanced features with just a one-liner, unlike RxSwift and Combine where custom implementations are often required.
+
+
+# Comparison with RxSwift and Combine for the advanced options in code
+
+- **RxSwift**:
+
+#### Throttle options
+
+```swift
+
+let disposeBag = DisposeBag()
+let subject = PublishSubject<Int>()
+
+// default ✅
+subject
+    .throttle(.milliseconds(500), scheduler: MainScheduler.instance)
+    .subscribe(onNext: { 
+        print("Default throttle: \($0)") 
+    })
+    .disposed(by: disposeBag)
+
+// runFirstImmediately ❌:
+    // RxSwift's throttle doesn't support this out-of-the-box. 
+    // Custom implementation needed.
+
+// lastGuaranteed ❌: 
+    // The throttle operation in RxSwift doesn't guarantee last emission. 
+    // Custom implementation needed.
+
+// combined ❌:
+    // Custom implementation needed combining RunFirstImmediately and LastGuaranteed.
+```
+
+#### Debounce options
+
+```swift
+
+// default ✅
+subject
+    .debounce(.milliseconds(500), scheduler: MainScheduler.instance)
+    .subscribe(onNext: { 
+        print("Default debounce: \($0)") 
+    })
+    .disposed(by: disposeBag)
+
+// runFirstImmediately ❌
+    // RxSwift's debounce doesn't support this out-of-the-box.
+    // Custom implementation needed.
+```
+
+- **Combine**:
+
+#### Throttle options
+
+```swift
+
+let subject = PassthroughSubject<Int, Never>()
+
+// default: ✅
+let cancellable1 = subject
+    .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
+    .sink { 
+        print("Default throttle: \($0)") 
+    }
+
+// runFirstImmediately ❌
+    // Combine's throttle doesn't support this out-of-the-box. 
+    // Custom implementation needed.
+
+// lastGuaranteed ✅ 
+let cancellable2 = subject
+    .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: false)
+    .sink { 
+        print("LastGuaranteed throttle: \($0)") 
+    }
+
+// combined ❌
+    // Custom implementation needed.
+
+```
+
+#### Debounce options
+
+```swift
+
+// default: ✅
+let cancellable3 = subject
+    .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+    .sink { 
+        print("Default debounce: \($0)") 
+    }
+
+// runFirstImmediately
+    // combine's debounce doesn't support this out-of-the-box. 
+    // Custom implementation needed.
+```
+
+- **Throttler**:
+
+✅
+```swift 
+throttle {
+    print("throttle : \(i)")
+}
+```
+
+✅
+```swift
+throttle(option: .runFirstImmediately) {
+    print("throttle : \(i)")
+}
+```
+
+✅
+```swift
+throttle(option: .lastGuaranteed) {
+    print("throttle : \(i)")
+}
+```
+
+✅
+```swift
+throttle(option: .combined) {
+    print("throttle : \(i)")
+}
+```
+
+✅
+```
+debounce {
+    print("debounce : \(i)")
+}
+```
+
+✅
+```swift
+debounce(option: .runFirstImmediately) {
+    print("debounce : \(i)")
+}
+```
+
+# Advantages over Combine and RxSwift's Throttle and Debounce
+
+- **Simple One-Liners**: The functions are straightforward and ready to use right out of the box. Just include a single line of code to get them up and running.
+- **Advanced debounce and throttler options**: See examples above - they can often come handy.
+- **No Need for Reactive Programming**: If you're not a fan of reactive programming paradigms, this approach offers an alternative that eliminates the need to adopt them.
+
+# :warning: Important Note on Identifiers parameters for debounce and throttle
+
+> **Highly Recommended**: While the functions are intentionally designed to run out of the box without specifying an identifier in favor of brevity, it is **strongly recommended** to provide a custom identifier for `debounce` and `throttle` operations for better control and organization.
 
 ### Example with Custom Identifier
 
@@ -228,169 +436,26 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 }
 ```
 
+# Throttler V2.0.0 - Actor-based Update
+
+## What's New in V2.0.0
+
+This version introduces actor-based concurrency for better performance and safer code execution. The previous versions used standard Swift methods for task management, but this release leverages the new actor model introduced in Swift 5.5.
+
+(Please be aware that the minimum version requirement has been raised to iOS 16.0, macOS 13.0, watchOS 9.0, and tvOS 16.0.)
+
 # Struct based (Deprecated)
 
 As of V2.0.0, struct based way is removed as deprecated in favor of Swift actor type. 
 Please migrate to functions. (throttle, debounce and delay) 
 
-## Use case
-
-Let's take a look at what it will look like when with and without Throttler.
-
-<b> With Throttler, </b>
-```swift
-import UIKit
-
-import Throttler
-
-class ViewController: UIViewController {
-    @IBOutlet var button: UIButton!
-    
-    var index = 0
-    
-    /********
-    Assuming your users will tap the button, and 
-    request asyncronous network call 10 times(maybe more?) in a row within very short time nonstop.
-    *********/
-    
-    @IBAction func click(_ sender: Any) {
-        print("click1!")
-        
-        debounce {        
-            // Imaging this is a time-consuming and resource-heavy task that takes an unknown amount of time!
-            
-            let url = URL(string: "https://jsonplaceholder.typicode.com/todos/1")!
-            let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
-                guard let data = data else { return }
-                self.index += 1
-                print("click1 : \(self.index) :  \(String(data: data, encoding: .utf8)!)")
-            }
-        }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view.
-    }
-}
-
-```
-
-<b> Output: </b>
-```swift
-click1!
-click1!
-click1!
-click1!
-click1!
-click1!
-click1!
-click1!
-click1!
-click1!
-2021-02-20 23:16:50.255273-0500 iOSThrottleTest[24776:813744] 
-click1 : 1 :  {
-  "userId": 1,
-  "id": 1,
-  "title": "delectus aut autem",
-  "completed": false
-}
-```
-
-<b>Without Throttler</b>
-
-```swift
-class ViewController: UIViewController {
-    @IBOutlet var button: UIButton!
-    
-    var index = 0
-    
-    /********
-    Assuming your users will tap the button, and 
-    request asyncronous network call 10 times(maybe more?) in a row within very short time nonstop.
-    *********/
-    
-    @IBAction func click(_ sender: Any) {
-        print("click1!")
-        
-        // Imaging this is a time-consuming and resource-heavy task that takes an unknown amount of time!
-        
-        let url = URL(string: "https://jsonplaceholder.typicode.com/todos/1")!
-        let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
-            guard let data = data else { return }
-            self.index += 1
-            print("click1 : \(self.index) :  \(String(data: data, encoding: .utf8)!)")
-        }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view.
-    }
-}
-```
-
-<b>if you don't use Throttler, output is as follows:</b>
-```swift
-/* 
-click1!
-2021-02-20 23:16:50.255273-0500 iOSThrottleTest[24776:813744] 
-click1 : 1 :  {
-  "userId": 1,
-  "id": 1,
-  "title": "delectus aut autem",
-  "completed": false
-}
-click1!
-2021-02-20 23:16:50.255273-0500 iOSThrottleTest[24776:813744] 
-click1 : 1 :  {
-  "userId": 1,
-  "id": 1,
-  "title": "delectus aut autem",
-  "completed": false
-}
-click1!
-2021-02-20 23:16:50.255273-0500 iOSThrottleTest[24776:813744] 
-click1 : 1 :  {
-  "userId": 1,
-  "id": 1,
-  "title": "delectus aut autem",
-  "completed": false
-}
-click1!
-2021-02-20 23:16:50.255273-0500 iOSThrottleTest[24776:813744] 
-click1 : 1 :  {
-  "userId": 1,
-  "id": 1,
-  "title": "delectus aut autem",
-  "completed": false
-}
-.......
-......
-.....
-...
-..
-.
-😂😂😂
-
-*/
-```
-
-<br>
-
-## Advantages over Combine and RxSwift's Throttle and Debounce
-
-- **Simple One-Liners**: The functions are straightforward and ready to use right out of the box. Just include a single line of code to get them up and running.
-- **Advanced debounce and throttler options**: See examples above - they can often come handy.
-- **No Need for Reactive Programming**: If you're not a fan of reactive programming paradigms, this approach offers an alternative that eliminates the need to adopt them
-
-## Requirements
+# Requirements
 
 iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
-### Installation
+# Installation
 
-#### Swift Package Manager
+## Swift Package Manager
 
 To use the latest V2.0.0 version, add the package to your `Package.swift`:
 
@@ -406,12 +471,12 @@ or in **Xcode**:
 - Click Next.
 - Done.
 
-### Contact
+# Contact
 
 boraseoksoon@gmail.com
 
 Pull requests are warmly welcome as well.
 
-### License
+# License
 
 Throttler is released under the MIT license. See LICENSE for details.
