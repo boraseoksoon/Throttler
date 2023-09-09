@@ -8,248 +8,234 @@
 
 # Throttler
 
-One Line to throttle, debounce and delay: Say Goodbye to Reactive Programming such as RxSwift and Combine.
+Drop one line to use throttle, debounce, and delay: say goodbye to reactive programming like RxSwift and Combine.
 
 # At a glance
 
 ```swift
+
 import Throttler
 
-/// throttle
-
-for i in (0...10000000) {
-    throttle {
-        print(i)
-    }
-}
-
-//  0
-//  3210779
-//  6509981
-//  9809756
-
-// specify an interval
-
-(0...100000).forEach { i in
-    throttle(.seconds(0.01)) {
-        print(i)
-    }
-}
-
-//  0
-//  18133
-//  36058
-//  57501
-//  82851
-
-/// debounce
-
 debounce {
-    print("debounce with 1 second interval")
+    print("debounce 1 sec")
 }
 
-debounce(.seconds(3)) {
-    print("debounce with 3 seconds interval")
+throttle {
+    print("throttle 1 sec")
 }
-
-/// delay
 
 delay {
-    print("fired after 1 sec")
+    print("delay 1 sec")
 }
 
-delay(.seconds(2)) {
-    print("fired after 2 sec")
-}
 ```
 
-# What functions look like in SwiftUI: 
+# Throttler V2.0.0 - Actor-based Update
+
+## What's New in V2.0.0
+
+This version introduces actor-based concurrency for better performance and safer code execution. The previous versions used standard Swift methods for task management, but this release leverages the new actor model introduced in Swift 5.5.
+
+(Please be aware that the minimum version requirement has been raised to iOS 16.0, macOS 13.0, watchOS 9.0, and tvOS 16.0.)
+
+## Basic Usage in SwiftUI
+
+Here's how you can quickly get started.
 
 ```swift
 import SwiftUI
 import Throttler
 
 struct ContentView: View {
-  
-  var body: some View {
-    VStack(spacing: 20) {
-      Button(action: {
-        if #available(iOS 16.0, *) {
-         for i in (0...10000000) {
-            throttle {
-              print(i)
+
+    var body: some View {
+        VStack(spacing: 20) {
+
+            // Throttle Example
+            Button(action: {
+                for i in 1...10000000 {
+                    throttle(identifier: "ThrottleExample") {
+                        print("Throttle \(i)")
+                    }
+                }
+            }) {
+                Text("Throttle")
             }
-          }
-        } else {
-          for i in (0...10000000) {
-            throttle(seconds: 0.01) {
-              print(i)
+            // Expected Output: Will print "Throttle" every 1 second (by default)
+
+            // Delay Example
+            Button(action: {
+                delay(.seconds(2)) {
+                    print("Delayed 2 seconds")
+                }
+            }) {
+                Text("Delay")
             }
-          }
+            // Expected Output: Will print "Delayed 2 seconds" after 2 seconds
+
+            // Debounce Example
+            Button(action: {
+                for i in 1...10000000 {
+                    debounce(.seconds(1), identifier: "DebounceExample") {
+                        print("Debounce \(i)")
+                    }
+                }
+            }) {
+                Text("Debounce")
+            }
+            // Expected Output: Will print "Debounce" only after the button has not been clicked for 1 second
         }
-        
-//          0
-//          3210779
-//          6509981
-//          9809756
-        
-      }) {
-        Text("throttle")
-      }
-      
-      Button(action: {
-        if #available(iOS 16.0, *) {
-          delay(.seconds(2)) {
-            print("fired after 2 sec")
-          }
-          
-          //                    delay {
-          //                        print("fired after 1 sec")
-          //                    }
-          
-        } else {
-          delay(seconds: 2) {
-            print("fired after 2 sec")
-          }
-        }
-        
-        // (delay 2 second..)
-        // ...
-        // fired after 2 sec
-        
-      }) {
-        Text("delay")
-      }
-      
-      Button(action: {
-        if #available(iOS 16.0, *) {
-          debounce {
-            print("fired after 1 second")
-          }
-        } else {
-          debounce(seconds: 1.0, on: .main) {
-            print("fired after 1 second")
-          }
-        }
-        
-        // (click a button as fast as you can)
-        // ....
-        // ....
-        // ....
-        // fired after 1 second
-        
-      }) {
-        Text("""
-          debounce
-          (click a button continuously as fast as you can)
-        """)
-      }
     }
-  }
 }
 ```
 
-# Struct based (Deprecated, not recommended)
+## DebounceOptions
 
-* Throttler
+1. **Default**: The standard debounce behavior by default.
 
 ```swift
-import Throttler
+/// by default: duration 1 sec and default debounce (not runFirstImmediately)
 
-var sum = 0
-
-for i in 0...10 {
-    print("for loop : \(i)")
-
-    // equivalent to throttle RxSwift and Combine provides by default.
-    Throttler.throttle(delay: .milliseconds(10)) {
-        sum += 1
-        print("sum : \(sum)")
+for i in Array(0...100) {
+    debounce {
+        print("debounce : \(i)")
     }
 }
 
-// for loop : 0
-// sum : 1
-// for loop : 1
-// for loop : 2
-// sum : 2
-// for loop : 3
-// for loop : 4
-// for loop : 5
-// for loop : 6
-// sum : 3
-// for loop : 7
-// for loop : 8
-// for loop : 9
-// for loop : 10
-// sum : 4
-
+// debounce : 100
 ```
 
-* Debouncer
+2. **RunFirstImmediately**: Executes the operation immediately, then debounces subsequent calls.
 
 ```swift
-import Throttler
-
-// advanced debounce, running a first task immediately before initiating debounce.
-
-for i in 1...1000 {
-    Debouncer.debounce {
-        print("debounce! > \(i)")
+for i in 1...10000000 {
+    debounce(option: .runFirstImmediately) {
+        print("Run First Immediately \(i)")
     }
 }
 
-// debounce! > 1
-// debounce! > 1000
+/// Expected Output: Executes a first task immediately, then debounce only after 1 second since the last operation.
 
-
-// equivalent to debounce of Combine, RxSwift.
-
-for i in 1...1000 {
-    Debouncer.debounce(shouldRunImmediately: false) {
-        print("debounce! > \(i)")
+for i in Array(0...100) {
+    debounce(.seconds(2), option: .runFirstImmediately) {
+        print("debounce : \(i)")
     }
 }
 
-// debounce! > 1000
-
+// debounce : 1
+// debounce : 100
 ```
 
-<br>
+## ThrottleOptions
 
-## Advanced struct-based debounce
+#### Options Explained
 
-Throttler can do advanced debounce feature, running a first event immediately before initiating debounce that Combine and RxSwift don't have by default.
-
-You could, but you may need a complex implementation yourself for that.
-
-For example, 
-Throttler can abstract away this kind of implementation 
-https://stackoverflow.com/a/60307697/3426053
-
-into 
+1. **Default**: The standard throttle behavior.
 
 ```swift
-import Throttler
 
-for i in 1...1000 {
-    Debouncer.debounce {
-        print("debounce! > \(i)")
+/// Throttle and executes once every 1 second.
+
+for i in 1...100000 {
+    throttle {
+        print("throttle: \(i)")
     }
 }
 
-// debounce! > 1
-// debounce! > 1000
+// throttle: 41919
+// throttle: 86807
 
 ```
-That's it
+
+2. **RunFirstImmediately**: Executes the operation immediately, then throttles subsequent calls.
+
+```swift
+
+/// Executes the first operation immediately and then throttles subsequent calls for every 1 second.
+
+for i in 1...100000 {
+    throttle(option: .runFirstImmediately) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 1
+// throttle : 43584
+// throttle : 88485
+
+```
+
+3. **LastGuaranteed**: Guarantees that the last call within the interval will be executed.
+
+```swift
+
+/// Guarantees the last call no matter what even after a throttle duration and finished.
+
+for i in 1...100000 {
+    throttle(.seconds(2), option: .lastGuaranteed) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 16363
+// throttle : 52307
+// throttle : 74711
+// throttle : 95747
+// throttle : 100000
+
+```
+
+4. **Combined**: Combines both `RunFirstImmediately` and `LastGuaranteed`.
+
+```swift
+
+// Combine all
+
+import Throttler
+
+for i in 1...100000 {
+    throttle(option: .combined) {
+        print("throttle : \(i)")
+    }
+}
+
+// throttle : 1
+// throttle : 25045
+// throttle : 30309
+// throttle : 35717
+// throttle : 48059
+// throttle : 61806
+// throttle : 75336
+// throttle : 88585
+// throttle : 100000
+
+```
+
+## :warning: Important Note on Identifiers parameters for debounce and throttle
+
+> **Highly Recommended**: While the functions do work out of the box without specifying an identifier, it is **strongly recommended** to provide a custom identifier for `debounce` and `throttle` operations for better control and organization.
+
+### Example with Custom Identifier
+
+```swift
+
+throttle(identifier: "custom_throttle_id") {
+    print("This is a recommended way of using throttled.")
+}
+
+debounce(.seconds(2), identifier: "custom_debounce_id") {
+    print("This is a recommended way of using debounced.")
+}
+```
+
+# Struct based (Deprecated)
+
+As of V2.0.0, struct based way is removed as deprecated in favor of Swift actor type. 
+Please migrate to functions. (throttle, debounce and delay) 
 
 ## Use case
 
-While it is originally developed to solve the problem where vast number of user typing input<br>involving CPU intensive tasks have be to performed repeatedly and constantly<br>on [HLVM,](https://hlvm.co.kr)
-
-A common problem that Throttler can solve is <br>a user taps a button that requests asynchronous network call a massive number of times <br>
-within few seconds. 
+Let's take a look at what it will look like when with and without Throttler.
 
 <b> With Throttler, </b>
 ```swift
@@ -270,8 +256,7 @@ class ViewController: UIViewController {
     @IBAction func click(_ sender: Any) {
         print("click1!")
         
-        Debouncer.debounce {
-        
+        debounce {        
             // Imaging this is a time-consuming and resource-heavy task that takes an unknown amount of time!
             
             let url = URL(string: "https://jsonplaceholder.typicode.com/todos/1")!
@@ -345,7 +330,7 @@ class ViewController: UIViewController {
 }
 ```
 
-<b>if you don't use Throttler, Output is as follows:</b>
+<b>if you don't use Throttler, output is as follows:</b>
 ```swift
 /* 
 click1!
@@ -386,7 +371,6 @@ click1 : 1 :  {
 ...
 ..
 .
-Your server will be hell busy trying to response all the time (putting cache aside)
 😂😂😂
 
 */
@@ -394,63 +378,33 @@ Your server will be hell busy trying to response all the time (putting cache asi
 
 <br>
 
-## Advantages Versus Combine, RxSwift Throttle and Debounce
-- One liner, no brainer. you can just drop the one line code and it will get up and running out of box.
-- For those who don't prefer Reactive programming to do debounce and throttle operation, you don't have to go to reactive programming like black magic in some sense. 
+## Advantages over Combine and RxSwift's Throttle and Debounce
+
+- **Simple One-Liners**: The functions are straightforward and ready to use right out of the box. Just include a single line of code to get them up and running.
+  
+- **No Need for Reactive Programming**: If you're not a fan of reactive programming paradigms, this approach offers an alternative that eliminates the need to adopt them
 
 ## Requirements
 
-iOS 13.0, macOS 10.15
-(To use latest version API, iOS 16.0 and macOS 13.0 are required.) 
-
-``` swift
-
-if #available(iOS 16.0, *) {
-     for i in (0...10000000) {
-        throttle {
-            print(i)
-        }
-    }
-} else {
-    for i in (0...10000000) {
-        throttle(seconds: 0.01) {
-            print(i)
-        }
-    }
-}
-
-@available(macOS 13.0, *)
-@available(iOS 16.0, *)
-public func throttle(
-    _ interval: Duration = .seconds(1),
-    on actorType: ActorType = .main,
-    operation: @escaping () -> Void
-) {
-    let now = Date()
-    
-    if let lastExecution = lastExecutionDate, now.timeIntervalSince(lastExecution) < interval.timeInterval { return }
-    
-    lastExecutionDate = now
-    
-    Task {
-        actorType ~= .main ? await MainActor.run { operation() } : operation()
-    }
-}
-```
+iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ### Installation
 
 #### Swift Package Manager
 
+To use the latest V2.0.0 version, add the package to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/YourRepo/Throttler.git", .upToNextMajor(from: "2.0.0"))
+]
+```
+
+or in **Xcode**: 
 - File > Swift Packages > Add Package Dependency
 - Add `https://github.com/boraseoksoon/Throttler.git`
 - Click Next.
 - Done.
-
-### To-Do:
-
-1. Provide an option that ensures the final execution of a job, regardless of whether it has been throttled or debounced.
-2. Write more useful functions that can accomplish tasks in a single line of code.
 
 ### Contact
 
