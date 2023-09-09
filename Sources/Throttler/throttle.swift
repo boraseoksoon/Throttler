@@ -17,7 +17,12 @@ import Foundation
    - option: An option to customize the behavior of the throttle (default is `.default`).
    - operation: The operation to be executed when throttled.
 
- - Usage:
+ - Note:
+   - Throttling is a technique to limit the rate at which a function is called. It ensures that the operation is executed no more often than the specified duration.
+   - The provided `identifier` is used to group related debounce operations. If multiple debounce calls share the same identifier, they will be considered as part of the same group, and the debounce behavior will apply collectively.
+
+ - Example:
+
 ```swift
 
 /// Throttle Options
@@ -80,6 +85,7 @@ for i in 1...100000 {
 // throttle : 88585
 // throttle : 100000
 ```
+
 */
 
 public func throttle(
