@@ -43,7 +43,6 @@ import Foundation
    }
  */
 
-
 public func debounce(
     _ duration: Duration = .seconds(1.0),
     identifier: String = "\(Thread.callStackSymbols)",
