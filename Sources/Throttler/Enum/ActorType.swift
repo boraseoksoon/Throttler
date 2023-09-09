@@ -10,4 +10,8 @@ import Foundation
 public enum ActorType {
     case current
     case main
+    
+    @Sendable func run(_ operation: () -> Void) async {
+        self == .main ? await MainActor.run { operation() } : operation()
+    }
 }
