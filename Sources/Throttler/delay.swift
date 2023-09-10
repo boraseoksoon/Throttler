@@ -12,7 +12,6 @@ import Foundation
 
  - Parameters:
    - duration: Foundation `Duration` type such sa .seconds(2.0). By default, .seconds(1.0)
-   - actorType: The actor type on which the operation should be executed (default is `.main`).
    - operation: The operation to be executed after the delay.
  
  - Note:
@@ -35,12 +34,8 @@ import Foundation
     ```
  */
 
-public func delay(
-    _ duration: Duration = .seconds(1.0),
-    by `actor`: ActorType = .mainActor,
-    operation: @escaping () -> Void
-) {
+public func delay(_ duration: Duration = .seconds(1.0), operation: @escaping () -> Void) {
     Task {
-        await throttler.delay(duration, by: actor, operation: operation)
+        await throttler.delay(duration, operation: operation)
     }
 }

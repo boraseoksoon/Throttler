@@ -11,9 +11,8 @@ import Foundation
  Debounce Function
 
  - Parameters:
-   - duration: Foundation `Duration` type such as `.seconds(2.0)`. default is .seconds(1.0)
+   - duration: Foundation `Duration` type such as `.seconds(2.0)`. Default is .seconds(1.0)
    - identifier: A unique identifier for this debounce operation. By default, it uses the call stack symbols as the identifier. You can provide a custom identifier to group related debounce operations. It is highly recommended to use your own identifier to avoid unexpected behavior, but you can use the internal stack trace identifier at your own risk.
-   - actorType: The actor context in which to run the operation. Use `.main` to run the operation on the main actor or `.current` for the current actor context.
    - option: The debounce option to control the behavior of the debounce operation. You can choose between `.default` and `.runFirst`. The default behavior delays the operation execution by the specified duration, while `runFirst` executes the operation immediately and applies debounce to subsequent calls.
    - operation: The operation to debounce. This is a closure that contains the code to be executed when the debounce conditions are met.
 
@@ -28,25 +27,20 @@ import Foundation
        // Basic debounce with default options
  
        debounce {
-           print("hi")
+           print("Button tapped (debounced with default option)")
        }
 
        // Using custom identifiers
  
-       debounce(identifier: "customIdentifier") {
-           print("recommended way")
+       debounce(.seconds(1.0), identifier: "customIdentifier") {
+           print("Custom debounced operation with identifier")
        }
        
        // Using 'runFirst' option to execute the first operation immediately and debounce the rest
  
-         for i in Array(0...100) {
-             debounce(.seconds(2), option: .runFirst) {
-                 print("debounce : \(i)")
-             }
-         }
-
-         // debounce : 1        => 💥
-         // debounce : 100
+       debounce(.seconds(1.0), identifier: "runFirstExample", option: .runFirst) {
+           print("Debounced operation using runFirst option")
+       }
    }
    ```
 
@@ -57,7 +51,6 @@ import Foundation
 public func debounce(
     _ duration: Duration = .seconds(1.0),
     identifier: String = "\(Thread.callStackSymbols)",
-    by `actor`: ActorType = .mainActor,
     option: DebounceOptions = .default,
     operation: @escaping () -> Void
 ) {
@@ -65,7 +58,6 @@ public func debounce(
         await throttler.debounce(
             duration,
             identifier: identifier,
-            by: actor,
             option: option,
             operation: operation
         )
