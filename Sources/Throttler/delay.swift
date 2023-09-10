@@ -22,13 +22,11 @@ import Foundation
  - Usage:
     ```swift
     // Delay execution by 2 seconds using a custom duration.
- 
     delay(.seconds(2)) {
         print("Delayed operation")
     }
     
     // Alternatively, delay execution by 1.5 seconds using the .seconds convenience method.
- 
     delay(.seconds(1.5)) {
         print("Another delayed operation")
     }
@@ -41,6 +39,10 @@ public func delay(
     operation: @escaping () -> Void
 ) {
     Task {
-        await throttler.delay(duration, by: actor, operation: operation)
+        await throttler.delay(
+            duration,
+            by: actor,
+            operation: operation
+        )
     }
 }

@@ -16,9 +16,7 @@ public enum DebounceOptions {
 /// Options for throttling an operation.
 public enum ThrottleOptions {
     case `default`         /// The default throttle behavior.
-    case runFirst          /// Run the operation immediately and throttle subsequent calls.
     case ensureLast        /// Guarantee that the last call is executed even if it's after the throttle time.
-    case combined          /// Combine both runFirst and ensureLast behaviors.
 }
 
 public enum ActorType {
@@ -47,7 +45,7 @@ actor Throttler {
     ///                 to use your own identifier for better control, but you can use the default
     ///                 which is based on the call stack symbols (use at your own risk).
     ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The debounce option (default or runFirst).
+    ///   - option: The debounce option (default or runFirstImmediately).
     ///   - operation: The operation to debounce.
     ///
     /// - Note: This method ensures that the operation is executed in a thread-safe manner
@@ -86,7 +84,7 @@ actor Throttler {
     ///                 to use your own identifier for better control, but you can use the default
     ///                 which is based on the call stack symbols (use at your own risk).
     ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The throttle option (default or runFirst).
+    ///   - option: The throttle option (default or runFirstImmediately).
     ///   - operation: The operation to throttle.
     ///
     /// - Note: This method ensures that the operation is executed in a thread-safe manner
@@ -101,35 +99,21 @@ actor Throttler {
     ) async {
         let lastDate = lastAttemptDate[identifier]
         let lastTimeInterval = Date().timeIntervalSince(lastDate ?? .distantPast)
-        
+
         let throttleRun = {
-            if lastTimeInterval >= duration.timeInterval {
-                self.lastAttemptDate[identifier] = Date()
-                
-                try? await Task.sleep(for: duration)
-                guard !Task.isCancelled else { return }
-                await actor.run(operation)
-                
-                self.lastAttemptDate[identifier] = nil
-            }
-        }
-        
-        let runOnce = {
-            guard lastDate == nil else { return }
+            guard lastTimeInterval > duration.timeInterval else { return }
             
             self.lastAttemptDate[identifier] = Date()
-            operation()
+            
+            try? await Task.sleep(for: duration)
+            guard !Task.isCancelled else { return }
+            await actor.run(operation)
+            
+            self.lastAttemptDate[identifier] = nil
         }
-        
+
         switch option {
-        case .runFirst:
-            runOnce()
-            await throttleRun()
         case .ensureLast:
-            await debounce(duration, identifier: identifier, by: actor, operation: operation)
-            await throttleRun()
-        case .combined:
-            runOnce()
             await debounce(duration, identifier: identifier, by: actor, operation: operation)
             await throttleRun()
         default:
