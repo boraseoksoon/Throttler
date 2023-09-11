@@ -20,7 +20,7 @@ public enum ThrottleOptions {
 }
 
 public enum ActorType {
-    case currentActor
+    case ownedActor
     case mainActor
     
     @Sendable func run(_ operation: () -> Void) async {
