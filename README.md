@@ -92,50 +92,71 @@ import Foundation
 
 /* a simple thread safe test. */
 
-var counter = 0
+var a = 0
 
-DispatchQueue.concurrentPerform(iterations: 10000) { i in
-    throttle(.seconds(0.1), identifier: "throttle1") {
-        counter += 1
-        print("\(i) >> throttle1 : \(counter)")
-    }
-    
-    throttle(.seconds(0.1), identifier: "throttle2") {
-        counter += 1
-        print("\(i) >> throttle2 : \(counter)")
-    }
-    
-    debounce(.seconds(0.1), identifier: "debounce1") {
-        counter += 1
-        print("\(i) >> debounce1 : \(counter)")
-    }
-    
-    debounce(identifier: "debounce2") {
-        counter += 1
-        print("\(i) >> debounce2 : \(counter)")
+DispatchQueue.global().async {
+    for _ in Array(0...10000) {
+        throttle(.seconds(0.1), by: .ownedActor) {
+            a+=1
+            print("throttle1 : \(a)")
+        }
     }
 }
 
-//2 >> throttle1 : 2
-//7 >> throttle2 : 1
-//3570 >> throttle1 : 3
-//3571 >> throttle2 : 4
-//4885 >> throttle1 : 5
-//4884 >> throttle2 : 6
-//5838 >> throttle1 : 7
-//5848 >> throttle2 : 8
-//6685 >> throttle1 : 9
-//6691 >> throttle2 : 10
-//7450 >> throttle1 : 11
-//7454 >> throttle2 : 12
-//8173 >> throttle1 : 13
-//8179 >> throttle2 : 14
-//8831 >> throttle1 : 15
-//8837 >> throttle2 : 16
-//9467 >> throttle1 : 17
-//9472 >> throttle2 : 18
-//9670 >> debounce1 : 19
-//9457 >> debounce2 : 20
+DispatchQueue.global().async {
+    for _ in Array(0...100) {
+        throttle(.seconds(0.01), by: .ownedActor) {
+            a+=1
+            print("throttle2 : \(a)")
+        }
+    }
+}
+
+DispatchQueue.global().async {
+    for _ in Array(0...100) {
+        throttle(.seconds(0.001), by: .ownedActor) {
+            a+=1
+            print("throttle3 : \(a)")
+        }
+    }
+}
+
+DispatchQueue.global().async {
+    for _ in Array(0...100) {
+        debounce(.seconds(0.001), by: .ownedActor) {
+            a+=1
+            print("debounce1 : \(a)")
+        }
+    }
+}
+
+//throttle3 : 1
+//throttle3 : 2
+//throttle3 : 3
+//throttle3 : 4
+//throttle3 : 5
+//throttle3 : 6
+//throttle3 : 7
+//throttle3 : 8
+//throttle3 : 9
+//throttle3 : 10
+//throttle3 : 11
+//debounce1 : 12
+//throttle3 : 13
+//throttle2 : 14
+//throttle1 : 15
+//throttle1 : 16
+//throttle1 : 17
+//throttle1 : 18
+//throttle1 : 19
+//throttle1 : 20
+//throttle1 : 21
+//throttle1 : 22
+//throttle1 : 23
+//throttle1 : 24
+//throttle1 : 25
+//throttle1 : 26
+//throttle1 : 27
 
 /// safe from race condition => ✅
 /// safe from data race      => ✅
