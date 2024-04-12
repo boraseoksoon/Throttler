@@ -82,7 +82,7 @@ struct ContentView: View {
 - **Delay**: Execute an operation after a certain amount of time. With Swift's actor model, you can rest assured that this operation is thread-safe too.
 
 # 🦾 Thread Safety
-All of these operations are executed in a thread-safe manner, leveraging the Swift actor model that Throttler utilizes. 
+All of these operations are executed in a thread-safe manner, leveraging the Swift actor model.
 This guarantees safe access and modification of shared mutable state within the closure of throttle, debounce, and delay functions, regardless of the number of threads involved.
 
 Feed any shared resource into them (debounce, throttle, debounce). The functions will handle everything out of box.
@@ -287,41 +287,12 @@ Publishers.Sequence(sequence: 1...100000)
 
 - **Throttler**:
   
-```swift 
+```swift
+import Throttler
+
 throttle {
     print("hi")
 }
-```
-
-```swift
-debounce {
-    print("hi")
-}
-```
-
-```swift
-for i in 1...100000 {
-    throttle(option: .ensureLast) {
-        print("throttle : \(i)")
-    }
-}
-
-// throttle : 16363 
-// throttle : 52307
-// throttle : 74711
-// throttle : 95747
-// throttle : 100000    => 💥
-```
-
-```swift
-for i in Array(0...100) {
-    debounce(option: .runFirst) {
-        print("debounce : \(i)")
-    }
-}
-
-// debounce : 1        => 💥
-// debounce : 100
 ```
 
 # Advantages over Combine and RxSwift's Throttle and Debounce
