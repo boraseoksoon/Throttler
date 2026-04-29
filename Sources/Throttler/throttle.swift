@@ -55,7 +55,7 @@ public func throttle(
     identifier: String = "\(Thread.callStackSymbols)",
     by `actor`: ActorType = .mainActor,
     option: ThrottleOptions = .default,
-    operation: @escaping () -> Void
+    operation: @Sendable @escaping () -> Void
 ) {
     Task {
         await throttler.throttle(

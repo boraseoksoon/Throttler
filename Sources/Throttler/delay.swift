@@ -36,7 +36,7 @@ import Foundation
 public func delay(
     _ duration: Duration = .seconds(1.0),
     by `actor`: ActorType = .mainActor,
-    operation: @escaping () -> Void
+    operation: @Sendable @escaping () -> Void
 ) {
     Task {
         await throttler.delay(

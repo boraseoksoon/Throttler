@@ -8,7 +8,7 @@
 import Foundation
 
 /// Options for debouncing an operation.
-public enum DebounceOptions {
+public enum DebounceOptions: Sendable {
     /// The default debounce behavior.
     case `default`
     /// Run the operation immediately and debounce subsequent calls.
@@ -16,18 +16,18 @@ public enum DebounceOptions {
 }
 
 /// Options for throttling an operation.
-public enum ThrottleOptions {
+public enum ThrottleOptions: Sendable {
     /// The default throttle behavior.
     case `default`
     /// Guarantee that the last call is executed even if it's after the throttle time.
     case ensureLast
 }
 
-public enum ActorType {
+public enum ActorType: Sendable {
     case currentActor
     case mainActor
     
-    @Sendable func run(_ operation: () -> Void) async {
+    func run(_ operation: @Sendable () -> Void) async {
         self == .mainActor ? await MainActor.run { operation() } : operation()
     }
 }
@@ -60,7 +60,7 @@ actor Throttler {
         identifier: String = "\(Thread.callStackSymbols)",
         by `actor`: ActorType = .mainActor,
         option: DebounceOptions = .default,
-        operation: @escaping () -> Void
+        operation: @Sendable @escaping () -> Void
     ) async {
         switch option {
         case .runFirst:
@@ -99,7 +99,7 @@ actor Throttler {
         identifier: String = "\(Thread.callStackSymbols)",
         by actor: ActorType = .mainActor,
         option: ThrottleOptions = .default,
-        operation: @escaping () -> Void
+        operation: @Sendable @escaping () -> Void
     ) async {
         let lastDate = lastAttemptDate[identifier]
         let lastTimeInterval = Date().timeIntervalSince(lastDate ?? .distantPast)
@@ -138,7 +138,7 @@ actor Throttler {
     func delay(
         _ duration: Duration = .seconds(1.0),
         by `actor`: ActorType = .mainActor,
-        operation: @escaping () -> Void
+        operation: @Sendable @escaping () -> Void
     ) async {
         try? await Task.sleep(for: duration)
         await actor.run(operation)
