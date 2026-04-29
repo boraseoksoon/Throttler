@@ -54,7 +54,7 @@ public func debounce(
     identifier: String = "\(Thread.callStackSymbols)",
     by `actor`: ActorType = .mainActor,
     option: DebounceOptions = .default,
-    operation: @escaping () -> Void
+    operation: @Sendable @escaping () -> Void
 ) {
     Task {
         await throttler.debounce(
