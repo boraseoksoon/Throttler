@@ -57,6 +57,7 @@ public func throttle(
     option: ThrottleOptions = .default,
     operation: @escaping () -> Void
 ) {
+    let operation = LegacyOperation(operation)
     Task {
         await throttler.throttle(
             duration,

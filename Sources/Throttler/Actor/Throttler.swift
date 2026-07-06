@@ -25,18 +25,18 @@ public enum ThrottleOptions: Sendable {
 
 public enum ActorType: Sendable {
     case currentActor
+    case ownedActor
+    case taskContext
     case mainActor
 
-    public static var ownedActor: ActorType { .currentActor }
-
-    public static var taskContext: ActorType { .currentActor }
-
-    func run(_ operation: @escaping () -> Void) async {
+    func run(_ operation: LegacyOperation) async {
         switch self {
         case .mainActor:
             await Self.runOnMainActor(operation)
-        case .currentActor:
-            operation()
+        case .ownedActor:
+            await Self.runOnOwnedActor(operation)
+        case .currentActor, .taskContext:
+            operation.run()
         }
     }
 
@@ -44,23 +44,53 @@ public enum ActorType: Sendable {
         switch self {
         case .mainActor:
             await Self.runOnMainActor(operation)
-        case .currentActor:
+        case .ownedActor:
+            await Self.runOnOwnedActor(operation)
+        case .currentActor, .taskContext:
             await operation()
         }
     }
 
     @MainActor
-    private static func runOnMainActor(_ operation: @escaping () -> Void) {
-        operation()
+    private static func runOnMainActor(_ operation: LegacyOperation) {
+        operation.run()
     }
 
     @MainActor
     private static func runOnMainActor(_ operation: @escaping @Sendable () async -> Void) async {
         await operation()
     }
+
+    private static func runOnOwnedActor(_ operation: LegacyOperation) async {
+        await ownedActorExecutor.run(operation)
+    }
+
+    private static func runOnOwnedActor(_ operation: @escaping @Sendable () async -> Void) async {
+        await ownedActorExecutor.run(operation)
+    }
+}
+
+private let ownedActorExecutor = OwnedActorExecutor()
+
+private actor OwnedActorExecutor {
+    func run(_ operation: LegacyOperation) {
+        operation.run()
+    }
+
+    func run(_ operation: @escaping @Sendable () async -> Void) async {
+        await operation()
+    }
 }
 
 let throttler = Throttler()
+
+final class LegacyOperation: @unchecked Sendable {
+    let run: () -> Void
+
+    init(_ run: @escaping () -> Void) {
+        self.run = run
+    }
+}
 
 func throttlerErrorWrapping(
     _ operation: @escaping @Sendable () async throws -> Void,
@@ -98,12 +128,12 @@ actor Throttler {
         identifier: String = "\(Thread.callStackSymbols)",
         by actor: ActorType = .mainActor,
         option: DebounceOptions = .default,
-        operation: @escaping () -> Void
+        operation: LegacyOperation
     ) async {
         let asyncOperation: @Sendable () async -> Void = {
-            operation()
+            await actor.run(operation)
         }
-        await debounce(duration, identifier: identifier, by: actor, option: option, operation: asyncOperation)
+        await debounce(duration, identifier: identifier, by: .taskContext, option: option, operation: asyncOperation)
     }
 
     func debounce(
@@ -149,12 +179,12 @@ actor Throttler {
         identifier: String = "\(Thread.callStackSymbols)",
         by actor: ActorType = .mainActor,
         option: ThrottleOptions = .default,
-        operation: @escaping () -> Void
+        operation: LegacyOperation
     ) async {
         let asyncOperation: @Sendable () async -> Void = {
-            operation()
+            await actor.run(operation)
         }
-        await throttle(duration, identifier: identifier, by: actor, option: option, operation: asyncOperation)
+        await throttle(duration, identifier: identifier, by: .taskContext, option: option, operation: asyncOperation)
     }
 
     func throttle(
@@ -199,12 +229,12 @@ actor Throttler {
     func delay(
         _ duration: Duration = .seconds(1.0),
         by actor: ActorType = .mainActor,
-        operation: @escaping () -> Void
+        operation: LegacyOperation
     ) async {
         let asyncOperation: @Sendable () async -> Void = {
-            operation()
+            await actor.run(operation)
         }
-        await delay(duration, by: actor, operation: asyncOperation)
+        await delay(duration, by: .taskContext, operation: asyncOperation)
     }
 
     func delay(
@@ -267,10 +297,9 @@ actor Throttler {
             await sleep(for: duration, clock: clock)
             guard !Task.isCancelled else { return }
             guard let self else { return }
-            guard await self.isCurrentDebounce(identifier: identifier, generation: generation) else { return }
+            guard await self.markDebounceReady(identifier: identifier, generation: generation) else { return }
 
             await actor.run(operation)
-            await self.markDebounceFired(identifier: identifier, generation: generation)
         }
     }
 
@@ -296,18 +325,13 @@ actor Throttler {
         }
     }
 
-    private func markDebounceFired(identifier: String, generation: UInt64) {
-        guard var entry = debounceEntries[identifier] else { return }
-        guard entry.scheduledGeneration == generation else { return }
+    private func markDebounceReady(identifier: String, generation: UInt64) -> Bool {
+        guard var entry = debounceEntries[identifier] else { return false }
+        guard entry.scheduledGeneration == generation else { return false }
         entry.scheduled = nil
         entry.lastFire = clock.now
         debounceEntries[identifier] = entry
-    }
-
-    private func markDebounceImmediateFired(identifier: String) {
-        guard var entry = debounceEntries[identifier] else { return }
-        entry.lastFire = clock.now
-        debounceEntries[identifier] = entry
+        return true
     }
 
     private func markThrottleTrailingReady(identifier: String, generation: UInt64) -> Bool {
@@ -319,9 +343,10 @@ actor Throttler {
         return true
     }
 
-    private func isCurrentDebounce(identifier: String, generation: UInt64) -> Bool {
-        guard let entry = debounceEntries[identifier] else { return false }
-        return entry.scheduled != nil && entry.scheduledGeneration == generation
+    private func markDebounceImmediateFired(identifier: String) {
+        guard var entry = debounceEntries[identifier] else { return }
+        entry.lastFire = clock.now
+        debounceEntries[identifier] = entry
     }
 
     private func nextScheduledGeneration() -> UInt64 {

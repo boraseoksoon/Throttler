@@ -56,6 +56,7 @@ public func debounce(
     option: DebounceOptions = .default,
     operation: @escaping () -> Void
 ) {
+    let operation = LegacyOperation(operation)
     Task {
         await throttler.debounce(
             duration,

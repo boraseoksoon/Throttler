@@ -38,6 +38,7 @@ public func delay(
     by `actor`: ActorType = .mainActor,
     operation: @escaping () -> Void
 ) {
+    let operation = LegacyOperation(operation)
     Task {
         await throttler.delay(
             duration,
