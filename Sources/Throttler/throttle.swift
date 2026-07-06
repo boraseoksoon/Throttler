@@ -53,7 +53,7 @@ public func throttle(
     column: UInt = #column,
     operation: @escaping () -> Void
 ) {
-    let legacyOperation = LegacyOperation(operation)
+    let synchronousOperation = SynchronousOperation(operation)
     let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
     Task {
         await throttler.throttle(
@@ -61,7 +61,7 @@ public func throttle(
             identifier: identifier,
             by: .taskContext,
             option: option,
-            operation: { await actor.run(legacyOperation) }
+            operation: { await actor.run(synchronousOperation) }
         )
     }
 }
@@ -71,13 +71,17 @@ public func throttle(
 @discardableResult
 public func throttle(
     _ duration: Duration = .seconds(1.0),
-    identifier: String,
+    identifier: String = callSiteDefaultIdentifier,
     by `actor`: ActorType = .mainActor,
     option: ThrottleOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
     onError: (@Sendable (Error) -> Void)? = nil,
     operation: @escaping @Sendable () async throws -> Void
 ) -> Task<Void, Never> {
-    Task {
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
+    return Task {
         await throttler.throttle(
             duration,
             identifier: identifier,

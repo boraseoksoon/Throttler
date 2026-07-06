@@ -25,12 +25,12 @@ public func delay(
     by `actor`: ActorType = .mainActor,
     operation: @escaping () -> Void
 ) {
-    let legacyOperation = LegacyOperation(operation)
+    let synchronousOperation = SynchronousOperation(operation)
     Task {
         await throttler.delay(
             duration,
             by: .taskContext,
-            operation: { await actor.run(legacyOperation) }
+            operation: { await actor.run(synchronousOperation) }
         )
     }
 }

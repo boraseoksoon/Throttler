@@ -477,6 +477,14 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 
 ```
 
+# Throttler V2.2.5 - Async default identifier update
+
+## What's New in V2.2.5
+
+- Async `debounce` and `throttle` calls can now omit `identifier`, matching the synchronous API. Default async identifiers are derived from the call site (file, line, and column), so repeated calls from the same source location share one group.
+- Explicit `identifier` async calls keep the same behavior and source shape as V2.2.4.
+- Renamed the internal synchronous-closure scheduling wrapper to remove stale legacy naming.
+
 # Throttler V2.2.4 - Internals hardening update
 
 ## What's New in V2.2.4

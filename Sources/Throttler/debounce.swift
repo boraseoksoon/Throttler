@@ -53,7 +53,7 @@ public func debounce(
     column: UInt = #column,
     operation: @escaping () -> Void
 ) {
-    let legacyOperation = LegacyOperation(operation)
+    let synchronousOperation = SynchronousOperation(operation)
     let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
     Task {
         await throttler.debounce(
@@ -61,7 +61,7 @@ public func debounce(
             identifier: identifier,
             by: .taskContext,
             option: option,
-            operation: { await actor.run(legacyOperation) }
+            operation: { await actor.run(synchronousOperation) }
         )
     }
 }
@@ -71,13 +71,17 @@ public func debounce(
 @discardableResult
 public func debounce(
     _ duration: Duration = .seconds(1.0),
-    identifier: String,
+    identifier: String = callSiteDefaultIdentifier,
     by `actor`: ActorType = .mainActor,
     option: DebounceOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
     onError: (@Sendable (Error) -> Void)? = nil,
     operation: @escaping @Sendable () async throws -> Void
 ) -> Task<Void, Never> {
-    Task {
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
+    return Task {
         await throttler.debounce(
             duration,
             identifier: identifier,

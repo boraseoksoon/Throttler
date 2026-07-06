@@ -35,7 +35,7 @@ public enum ActorType: Sendable {
     /// `@MainActor` at the call site when its body must be main-actor-isolated.
     case mainActor
 
-    func run(_ operation: LegacyOperation) async {
+    func run(_ operation: SynchronousOperation) async {
         switch self {
         case .mainActor:
             await Self.runOnMainActor(operation)
@@ -69,7 +69,7 @@ public enum ActorType: Sendable {
     }
 
     @MainActor
-    private static func runOnMainActor(_ operation: LegacyOperation) {
+    private static func runOnMainActor(_ operation: SynchronousOperation) {
         operation.run()
     }
 
@@ -83,7 +83,7 @@ public enum ActorType: Sendable {
         try await operation()
     }
 
-    private static func runOnOwnedActor(_ operation: LegacyOperation) async {
+    private static func runOnOwnedActor(_ operation: SynchronousOperation) async {
         await ownedActorExecutor.run(operation)
     }
 
@@ -99,7 +99,7 @@ public enum ActorType: Sendable {
 private let ownedActorExecutor = OwnedActorExecutor()
 
 private actor OwnedActorExecutor {
-    func run(_ operation: LegacyOperation) {
+    func run(_ operation: SynchronousOperation) {
         operation.run()
     }
 
@@ -122,9 +122,7 @@ func resolveCallSiteIdentifier(_ identifier: String, fileID: String, line: UInt,
     identifier == callSiteDefaultIdentifier ? "\(fileID):\(line):\(column)" : identifier
 }
 
-/// A source-compatibility wrapper that carries a pre-Sendable `() -> Void` closure
-/// through the Sendable-checked scheduling pipeline.
-final class LegacyOperation: @unchecked Sendable {
+final class SynchronousOperation: @unchecked Sendable {
     let run: () -> Void
 
     init(_ run: @escaping () -> Void) {

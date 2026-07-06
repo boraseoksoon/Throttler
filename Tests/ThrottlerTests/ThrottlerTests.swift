@@ -254,7 +254,7 @@ final class ThrottlerTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 1.0)
     }
 
-    func testOwnedActorSerializesLegacyOperations() async {
+    func testOwnedActorSerializesSynchronousOperations() async {
         final class Counter {
             var value = 0
         }
@@ -272,7 +272,7 @@ final class ThrottlerTests: XCTestCase {
         XCTAssertEqual(counter.value, 500)
     }
 
-    func testMainActorRunsLegacyOperationOnMainThread() async {
+    func testMainActorRunsSynchronousOperationOnMainThread() async {
         let expectation = expectation(description: "main actor operation")
 
         delay(.milliseconds(10), by: .mainActor) {
@@ -283,7 +283,7 @@ final class ThrottlerTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 1.0)
     }
 
-    func testLegacyDelayStillExecutesOperation() async {
+    func testSynchronousDelayStillExecutesOperation() async {
         let recorder = Recorder()
 
         delay(.milliseconds(20), by: .currentActor) {
@@ -298,7 +298,7 @@ final class ThrottlerTests: XCTestCase {
         XCTAssertEqual(values, [1])
     }
 
-    func testLegacyDebounceStillExecutesOperation() async {
+    func testSynchronousDebounceStillExecutesOperation() async {
         let recorder = Recorder()
         let identifier = UUID().uuidString
 
@@ -314,7 +314,7 @@ final class ThrottlerTests: XCTestCase {
         XCTAssertEqual(values, [1])
     }
 
-    func testLegacyThrottleStillExecutesOperation() async {
+    func testSynchronousThrottleStillExecutesOperation() async {
         let recorder = Recorder()
         let identifier = UUID().uuidString
 
@@ -825,6 +825,22 @@ final class ThrottlerTests: XCTestCase {
         XCTAssertEqual(count, 1)
     }
 
+    func testAsyncDebounceDefaultIdentifierCoalescesCallsFromSameCallSite() async {
+        let recorder = Recorder()
+
+        for value in 1...5 {
+            let task = debounce(.milliseconds(100), by: .taskContext) {
+                await recorder.append(value)
+            }
+            await task.value
+        }
+
+        try? await Task.sleep(for: .milliseconds(400))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [5])
+    }
+
     func testDebounceDefaultIdentifierSeparatesDifferentCallSites() async {
         let recorder = Recorder()
 
@@ -860,6 +876,22 @@ final class ThrottlerTests: XCTestCase {
 
         let count = await recorder.count()
         XCTAssertEqual(count, 1)
+    }
+
+    func testAsyncThrottleDefaultIdentifierThrottlesBurstFromSameCallSite() async {
+        let recorder = Recorder()
+
+        for value in 1...5 {
+            let task = throttle(.milliseconds(100), by: .taskContext) {
+                await recorder.append(value)
+            }
+            await task.value
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
     }
 
     func testDebounceAndThrottleStateAreIndependentForSameIdentifier() async {
