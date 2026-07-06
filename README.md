@@ -334,6 +334,19 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 
 ```
 
+# Throttler V2.2.0 - Safer scheduling update
+
+## What's New in V2.2.0
+
+This release keeps the existing public `throttle`, `debounce`, and `delay` APIs while replacing the internal scheduling with a monotonic-clock actor implementation.
+
+- `debounce(.runFirst)` no longer schedules a duplicate trailing run after the immediate run.
+- `debounce` protects scheduled work with generation checks so older tasks cannot clear newer scheduled work.
+- `throttle` now runs the first eligible call immediately and uses `.ensureLast` to schedule the latest suppressed call at the end of the throttle window.
+- `delay` has an additive async/throws overload that returns `Task<Void, Never>` for cancellation.
+- `sleep(_:)` and `execute(with:on:)` are available as convenience helpers.
+- `ActorType` keeps existing cases and also supports `.ownedActor` and `.taskContext` as non-main execution aliases.
+
 # Throttler V2.0.0 - Actor-based Update
 
 ## What's New in V2.0.0
@@ -356,11 +369,11 @@ iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ## Swift Package Manager
 
-To use the latest V2.0.9 version, add the package to your `Package.swift`:
+To use the latest V2.2.0 version, add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/YourRepo/Throttler.git", .upToNextMajor(from: "2.0.9"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.0"))
 ]
 ```
 

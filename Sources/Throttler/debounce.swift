@@ -66,3 +66,23 @@ public func debounce(
         )
     }
 }
+
+@discardableResult
+public func debounce(
+    _ duration: Duration = .seconds(1.0),
+    identifier: String,
+    by `actor`: ActorType = .mainActor,
+    option: DebounceOptions = .default,
+    onError: (@Sendable (Error) -> Void)? = nil,
+    operation: @escaping @Sendable () async throws -> Void
+) -> Task<Void, Never> {
+    Task {
+        await throttler.debounce(
+            duration,
+            identifier: identifier,
+            by: actor,
+            option: option,
+            operation: throttlerErrorWrapping(operation, onError: onError)
+        )
+    }
+}

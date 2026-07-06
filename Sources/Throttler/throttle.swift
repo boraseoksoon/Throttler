@@ -67,3 +67,23 @@ public func throttle(
         )
     }
 }
+
+@discardableResult
+public func throttle(
+    _ duration: Duration = .seconds(1.0),
+    identifier: String,
+    by `actor`: ActorType = .mainActor,
+    option: ThrottleOptions = .default,
+    onError: (@Sendable (Error) -> Void)? = nil,
+    operation: @escaping @Sendable () async throws -> Void
+) -> Task<Void, Never> {
+    Task {
+        await throttler.throttle(
+            duration,
+            identifier: identifier,
+            by: actor,
+            option: option,
+            operation: throttlerErrorWrapping(operation, onError: onError)
+        )
+    }
+}

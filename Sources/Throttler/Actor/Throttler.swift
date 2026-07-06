@@ -8,7 +8,7 @@
 import Foundation
 
 /// Options for debouncing an operation.
-public enum DebounceOptions {
+public enum DebounceOptions: Sendable {
     /// The default debounce behavior.
     case `default`
     /// Run the operation immediately and debounce subsequent calls.
@@ -16,84 +16,134 @@ public enum DebounceOptions {
 }
 
 /// Options for throttling an operation.
-public enum ThrottleOptions {
+public enum ThrottleOptions: Sendable {
     /// The default throttle behavior.
     case `default`
-    /// Guarantee that the last call is executed even if it's after the throttle time.
+    /// Guarantee that the last call is executed after the throttle window.
     case ensureLast
 }
 
-public enum ActorType {
+public enum ActorType: Sendable {
     case currentActor
     case mainActor
-    
-    @Sendable func run(_ operation: () -> Void) async {
-        self == .mainActor ? await MainActor.run { operation() } : operation()
-    }
-}
 
-/// a global actor variable for free functions (delay, debounce, throttle) to rely on. (internal use only)
-let throttler = Throttler()
+    public static var ownedActor: ActorType { .currentActor }
 
-/// An actor for managing debouncing, throttling and delay operations designed to be the internal use.
-actor Throttler {
-    private lazy var cachedTask: [String: Task<(), Never>] = [:]
-    private lazy var lastAttemptDate: [String: Date] = [:]
-    
-    /// Debounces an operation, ensuring it's executed only after a specified time interval
-    /// has passed since the last call.
-    ///
-    /// - Parameters:
-    ///   - duration: The time interval for debouncing.
-    ///   - identifier: A custom identifier for distinguishing debounce tasks. It's recommended
-    ///                 to use your own identifier for better control, but you can use the default
-    ///                 which is based on the call stack symbols (use at your own risk).
-    ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The debounce option (default or runFirstImmediately).
-    ///   - operation: The operation to debounce.
-    ///
-    /// - Note: This method ensures that the operation is executed in a thread-safe manner
-    ///         within the specified actor context.
-    
-    func debounce(
-        _ duration: Duration = .seconds(1.0),
-        identifier: String = "\(Thread.callStackSymbols)",
-        by `actor`: ActorType = .mainActor,
-        option: DebounceOptions = .default,
-        operation: @escaping () -> Void
-    ) async {
-        switch option {
-        case .runFirst:
-            if cachedTask[identifier] == nil {
-                Task { await actor.run(operation) }
-            }
-            fallthrough
-        default:
-            cachedTask[identifier]?.cancel()
-            cachedTask[identifier] = {
-                Task {
-                    try? await Task.sleep(for: duration)
-                    guard !Task.isCancelled else { return }
-                    await actor.run(operation)
-                }
-            }()
+    public static var taskContext: ActorType { .currentActor }
+
+    func run(_ operation: @escaping () -> Void) async {
+        switch self {
+        case .mainActor:
+            await Self.runOnMainActor(operation)
+        case .currentActor:
+            operation()
         }
     }
 
-    /// Throttles an operation, ensuring it's executed at most once within a specified time interval.
-    ///
-    /// - Parameters:
-    ///   - duration: The time interval for throttling.
-    ///   - identifier: A custom identifier for distinguishing throttle tasks. It's recommended
-    ///                 to use your own identifier for better control, but you can use the default
-    ///                 which is based on the call stack symbols (use at your own risk).
-    ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - option: The throttle option (default or runFirstImmediately).
-    ///   - operation: The operation to throttle.
-    ///
-    /// - Note: This method ensures that the operation is executed in a thread-safe manner
-    ///         within the specified actor context.
-    
+    func run(_ operation: @escaping @Sendable () async -> Void) async {
+        switch self {
+        case .mainActor:
+            await Self.runOnMainActor(operation)
+        case .currentActor:
+            await operation()
+        }
+    }
+
+    @MainActor
+    private static func runOnMainActor(_ operation: @escaping () -> Void) {
+        operation()
+    }
+
+    @MainActor
+    private static func runOnMainActor(_ operation: @escaping @Sendable () async -> Void) async {
+        await operation()
+    }
+}
+
+let throttler = Throttler()
+
+func throttlerErrorWrapping(
+    _ operation: @escaping @Sendable () async throws -> Void,
+    onError: (@Sendable (Error) -> Void)?
+) -> @Sendable () async -> Void {
+    {
+        do {
+            try await operation()
+        } catch {
+            onError?(error)
+        }
+    }
+}
+
+actor Throttler {
+    private struct DebounceEntry {
+        var scheduled: Task<Void, Never>?
+        var scheduledGeneration: UInt64 = 0
+        var lastFire: ContinuousClock.Instant?
+    }
+
+    private struct ThrottleEntry {
+        var trailing: Task<Void, Never>?
+        var trailingGeneration: UInt64 = 0
+        var lastFire: ContinuousClock.Instant?
+    }
+
+    private var debounceEntries: [String: DebounceEntry] = [:]
+    private var throttleEntries: [String: ThrottleEntry] = [:]
+    private let clock = ContinuousClock()
+    private var nextGeneration: UInt64 = 0
+
+    func debounce(
+        _ duration: Duration = .seconds(1.0),
+        identifier: String = "\(Thread.callStackSymbols)",
+        by actor: ActorType = .mainActor,
+        option: DebounceOptions = .default,
+        operation: @escaping () -> Void
+    ) async {
+        let asyncOperation: @Sendable () async -> Void = {
+            operation()
+        }
+        await debounce(duration, identifier: identifier, by: actor, option: option, operation: asyncOperation)
+    }
+
+    func debounce(
+        _ duration: Duration = .seconds(1.0),
+        identifier: String = "\(Thread.callStackSymbols)",
+        by actor: ActorType = .mainActor,
+        option: DebounceOptions = .default,
+        operation: @escaping @Sendable () async -> Void
+    ) async {
+        if duration <= .seconds(0.0) {
+            await actor.run(operation)
+            return
+        }
+
+        let now = clock.now
+        var entry = debounceEntries[identifier] ?? DebounceEntry()
+
+        switch option {
+        case .default:
+            break
+        case .runFirst:
+            if canRunDebounceImmediately(entry: entry, now: now, duration: duration) {
+                entry.lastFire = now
+                debounceEntries[identifier] = entry
+                await actor.run(operation)
+                markDebounceImmediateFired(identifier: identifier)
+                return
+            }
+        }
+
+        scheduleDebounceTrailing(
+            entry: &entry,
+            identifier: identifier,
+            after: duration,
+            actor: actor,
+            operation: operation
+        )
+        debounceEntries[identifier] = entry
+    }
+
     func throttle(
         _ duration: Duration = .seconds(1.0),
         identifier: String = "\(Thread.callStackSymbols)",
@@ -101,52 +151,187 @@ actor Throttler {
         option: ThrottleOptions = .default,
         operation: @escaping () -> Void
     ) async {
-        let lastDate = lastAttemptDate[identifier]
-        let lastTimeInterval = Date().timeIntervalSince(lastDate ?? .distantPast)
+        let asyncOperation: @Sendable () async -> Void = {
+            operation()
+        }
+        await throttle(duration, identifier: identifier, by: actor, option: option, operation: asyncOperation)
+    }
 
-        let throttleRun = {
-            guard lastTimeInterval > duration.timeInterval else { return }
-            
-            self.lastAttemptDate[identifier] = Date()
-            
-            try? await Task.sleep(for: duration)
-            guard !Task.isCancelled else { return }
+    func throttle(
+        _ duration: Duration = .seconds(1.0),
+        identifier: String = "\(Thread.callStackSymbols)",
+        by actor: ActorType = .mainActor,
+        option: ThrottleOptions = .default,
+        operation: @escaping @Sendable () async -> Void
+    ) async {
+        if duration <= .seconds(0.0) {
             await actor.run(operation)
-            
-            self.lastAttemptDate[identifier] = nil
+            return
         }
 
-        switch option {
-        case .ensureLast:
-            await debounce(duration, identifier: identifier, by: actor, operation: operation)
-            await throttleRun()
-        default:
-            await throttleRun()
+        let now = clock.now
+        var entry = throttleEntries[identifier] ?? ThrottleEntry()
+
+        if canRunThrottleImmediately(entry: entry, now: now, duration: duration) {
+            entry.trailing?.cancel()
+            entry.trailing = nil
+            entry.lastFire = now
+            throttleEntries[identifier] = entry
+            await actor.run(operation)
+            return
+        }
+
+        guard option == .ensureLast else {
+            throttleEntries[identifier] = entry
+            return
+        }
+
+        scheduleThrottleTrailing(
+            entry: &entry,
+            identifier: identifier,
+            after: remainingThrottleDuration(entry: entry, now: now, duration: duration),
+            actor: actor,
+            operation: operation
+        )
+        throttleEntries[identifier] = entry
+    }
+
+    func delay(
+        _ duration: Duration = .seconds(1.0),
+        by actor: ActorType = .mainActor,
+        operation: @escaping () -> Void
+    ) async {
+        let asyncOperation: @Sendable () async -> Void = {
+            operation()
+        }
+        await delay(duration, by: actor, operation: asyncOperation)
+    }
+
+    func delay(
+        _ duration: Duration = .seconds(1.0),
+        by actor: ActorType = .mainActor,
+        operation: @escaping @Sendable () async -> Void
+    ) async {
+        if duration <= .seconds(0.0) {
+            await actor.run(operation)
+            return
+        }
+
+        let clock = self.clock
+        await sleep(for: duration, clock: clock)
+        guard !Task.isCancelled else { return }
+        await actor.run(operation)
+    }
+
+    private func canRunDebounceImmediately(
+        entry: DebounceEntry,
+        now: ContinuousClock.Instant,
+        duration: Duration
+    ) -> Bool {
+        guard entry.scheduled == nil else { return false }
+        guard let lastFire = entry.lastFire else { return true }
+        return (now - lastFire) >= duration
+    }
+
+    private func canRunThrottleImmediately(
+        entry: ThrottleEntry,
+        now: ContinuousClock.Instant,
+        duration: Duration
+    ) -> Bool {
+        guard let lastFire = entry.lastFire else { return true }
+        return (now - lastFire) >= duration
+    }
+
+    private func remainingThrottleDuration(
+        entry: ThrottleEntry,
+        now: ContinuousClock.Instant,
+        duration: Duration
+    ) -> Duration {
+        guard let lastFire = entry.lastFire else { return .seconds(0.0) }
+        return duration - (now - lastFire)
+    }
+
+    private func scheduleDebounceTrailing(
+        entry: inout DebounceEntry,
+        identifier: String,
+        after duration: Duration,
+        actor: ActorType,
+        operation: @escaping @Sendable () async -> Void
+    ) {
+        entry.scheduled?.cancel()
+        let generation = nextScheduledGeneration()
+        entry.scheduledGeneration = generation
+
+        let clock = self.clock
+        entry.scheduled = Task { [weak self] in
+            await sleep(for: duration, clock: clock)
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            guard await self.isCurrentDebounce(identifier: identifier, generation: generation) else { return }
+
+            await actor.run(operation)
+            await self.markDebounceFired(identifier: identifier, generation: generation)
         }
     }
 
-    /// Delays the execution of an operation by a specified time interval.
-    ///
-    /// - Parameters:
-    ///   - duration: The time interval to delay execution.
-    ///   - actorType: The actor type on which to execute the operation (default is main actor).
-    ///   - operation: The operation to delay.
-    ///
-    /// - Note: This method ensures that the operation is executed in a thread-safe manner
-    ///         within the specified actor context.
-    
-    func delay(
-        _ duration: Duration = .seconds(1.0),
-        by `actor`: ActorType = .mainActor,
-        operation: @escaping () -> Void
-    ) async {
-        try? await Task.sleep(for: duration)
-        await actor.run(operation)
+    private func scheduleThrottleTrailing(
+        entry: inout ThrottleEntry,
+        identifier: String,
+        after duration: Duration,
+        actor: ActorType,
+        operation: @escaping @Sendable () async -> Void
+    ) {
+        entry.trailing?.cancel()
+        let generation = nextScheduledGeneration()
+        entry.trailingGeneration = generation
+
+        let clock = self.clock
+        entry.trailing = Task { [weak self] in
+            await sleep(for: duration, clock: clock)
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            guard await self.markThrottleTrailingReady(identifier: identifier, generation: generation) else { return }
+
+            await actor.run(operation)
+        }
+    }
+
+    private func markDebounceFired(identifier: String, generation: UInt64) {
+        guard var entry = debounceEntries[identifier] else { return }
+        guard entry.scheduledGeneration == generation else { return }
+        entry.scheduled = nil
+        entry.lastFire = clock.now
+        debounceEntries[identifier] = entry
+    }
+
+    private func markDebounceImmediateFired(identifier: String) {
+        guard var entry = debounceEntries[identifier] else { return }
+        entry.lastFire = clock.now
+        debounceEntries[identifier] = entry
+    }
+
+    private func markThrottleTrailingReady(identifier: String, generation: UInt64) -> Bool {
+        guard var entry = throttleEntries[identifier] else { return false }
+        guard entry.trailingGeneration == generation else { return false }
+        entry.trailing = nil
+        entry.lastFire = clock.now
+        throttleEntries[identifier] = entry
+        return true
+    }
+
+    private func isCurrentDebounce(identifier: String, generation: UInt64) -> Bool {
+        guard let entry = debounceEntries[identifier] else { return false }
+        return entry.scheduled != nil && entry.scheduledGeneration == generation
+    }
+
+    private func nextScheduledGeneration() -> UInt64 {
+        nextGeneration &+= 1
+        return nextGeneration
     }
 }
 
-private extension Duration {
-    var timeInterval: TimeInterval {
-        TimeInterval(components.seconds) + Double(components.attoseconds)/1e18
-    }
+@Sendable
+func sleep(for duration: Duration, clock: ContinuousClock) async {
+    guard duration > .seconds(0.0) else { return }
+    try? await clock.sleep(for: duration)
 }

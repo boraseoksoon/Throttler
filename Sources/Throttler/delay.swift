@@ -46,3 +46,19 @@ public func delay(
         )
     }
 }
+
+@discardableResult
+public func delay(
+    _ duration: Duration = .seconds(1.0),
+    by `actor`: ActorType = .mainActor,
+    onError: (@Sendable (Error) -> Void)? = nil,
+    operation: @escaping @Sendable () async throws -> Void
+) -> Task<Void, Never> {
+    Task {
+        await throttler.delay(
+            duration,
+            by: actor,
+            operation: throttlerErrorWrapping(operation, onError: onError)
+        )
+    }
+}

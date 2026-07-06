@@ -1,4 +1,170 @@
 import XCTest
 @testable import Throttler
 
-final class ThrottlerTests: XCTestCase {}
+actor Recorder {
+    private var recordedValues: [Int] = []
+
+    func append(_ value: Int) {
+        recordedValues.append(value)
+    }
+
+    func values() -> [Int] {
+        recordedValues
+    }
+}
+
+final class ThrottlerTests: XCTestCase {
+    func testDebounceCoalescesRapidAsyncCalls() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        for value in 1...5 {
+            let task = debounce(.milliseconds(20), identifier: identifier, by: .taskContext) {
+                await recorder.append(value)
+            }
+            await task.value
+        }
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [5])
+    }
+
+    func testDebounceRunFirstDoesNotScheduleDuplicateTrailingCall() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        let task = debounce(.milliseconds(30), identifier: identifier, by: .taskContext, option: .runFirst) {
+            await recorder.append(1)
+        }
+        await task.value
+
+        try? await Task.sleep(for: .milliseconds(100))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+
+    func testDelayTaskCanBeCancelled() async {
+        let recorder = Recorder()
+
+        let task = delay(.milliseconds(60), by: .taskContext) {
+            await recorder.append(1)
+        }
+
+        task.cancel()
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [])
+    }
+
+    func testLegacyDelayStillExecutesOperation() async {
+        let recorder = Recorder()
+
+        delay(.milliseconds(20), by: .currentActor) {
+            Task {
+                await recorder.append(1)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+
+    func testLegacyDebounceStillExecutesOperation() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        debounce(.milliseconds(20), identifier: identifier, by: .currentActor) {
+            Task {
+                await recorder.append(1)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+
+    func testLegacyThrottleStillExecutesOperation() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        throttle(.milliseconds(20), identifier: identifier, by: .currentActor) {
+            Task {
+                await recorder.append(1)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+
+    func testThrottleDefaultRunsFirstCallImmediatelyAndSuppressesBurst() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        for value in 1...5 {
+            let task = throttle(.milliseconds(80), identifier: identifier, by: .taskContext) {
+                await recorder.append(value)
+            }
+            await task.value
+        }
+
+        try? await Task.sleep(for: .milliseconds(40))
+
+        let immediateValues = await recorder.values()
+        XCTAssertEqual(immediateValues.count, 1)
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let finalValues = await recorder.values()
+        XCTAssertEqual(finalValues.count, 1)
+    }
+
+    func testThrottleEnsureLastRunsLatestTrailingCall() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        let firstTask = throttle(.milliseconds(80), identifier: identifier, by: .taskContext, option: .ensureLast) {
+            await recorder.append(1)
+        }
+        await firstTask.value
+
+        try? await Task.sleep(for: .milliseconds(20))
+
+        for value in 2...5 {
+            let task = throttle(.milliseconds(80), identifier: identifier, by: .taskContext, option: .ensureLast) {
+                await recorder.append(value)
+            }
+            await task.value
+        }
+
+        try? await Task.sleep(for: .milliseconds(160))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values.count, 2)
+        XCTAssertEqual(values.first, 1)
+        XCTAssertEqual(values.last, 5)
+    }
+
+    func testSleepAndExecuteHelpers() async {
+        let recorder = Recorder()
+
+        execute(with: .milliseconds(20), on: .ownedActor) {
+            await recorder.append(1)
+        }
+
+        await sleep(.milliseconds(80))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+}
