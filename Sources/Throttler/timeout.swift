@@ -5,8 +5,6 @@
 //  Created by seoksoon jang on 2026-07-06.
 //
 
-import Foundation
-
 /// The error thrown by `timeout` when the deadline wins.
 public enum TimeoutError: Error, Equatable, Sendable {
     /// The operation did not finish within the provided duration.

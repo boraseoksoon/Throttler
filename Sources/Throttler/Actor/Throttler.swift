@@ -5,8 +5,6 @@
 //  Created by seoksoon jang on 2023-09-08.
 //
 
-import Foundation
-
 /// Options for debouncing an operation.
 public enum DebounceOptions: Sendable {
     /// The default debounce behavior.
@@ -23,10 +21,18 @@ public enum ThrottleOptions: Sendable {
     case ensureLast
 }
 
+/// The execution context used to run a scheduled operation.
 public enum ActorType: Sendable {
+    /// A legacy alias for `.taskContext`. It does not hop back to the caller's actor.
     case currentActor
+    /// A package-owned serial actor. Operations sharing it run serialized.
     case ownedActor
+    /// The scheduled task's own context, with no extra actor hop.
     case taskContext
+    /// The main actor. A synchronous closure is guaranteed to run on the main actor.
+    /// An asynchronous closure is called from the main actor, but a nonisolated async
+    /// closure body still runs on the global executor; isolate the closure with
+    /// `@MainActor` at the call site when its body must be main-actor-isolated.
     case mainActor
 
     func run(_ operation: LegacyOperation) async {
@@ -108,6 +114,16 @@ private actor OwnedActorExecutor {
 
 let throttler = Throttler()
 
+/// The sentinel default for `identifier`; it marks calls that should be grouped
+/// by their call site (file, line, and column) instead of an explicit identifier.
+public let callSiteDefaultIdentifier = "__throttler.call.site.default__"
+
+func resolveCallSiteIdentifier(_ identifier: String, fileID: String, line: UInt, column: UInt) -> String {
+    identifier == callSiteDefaultIdentifier ? "\(fileID):\(line):\(column)" : identifier
+}
+
+/// A source-compatibility wrapper that carries a pre-Sendable `() -> Void` closure
+/// through the Sendable-checked scheduling pipeline.
 final class LegacyOperation: @unchecked Sendable {
     let run: () -> Void
 
@@ -130,257 +146,178 @@ func throttlerErrorWrapping(
 }
 
 actor Throttler {
-    private struct DebounceEntry {
-        var scheduled: Task<Void, Never>?
-        var scheduledGeneration: UInt64 = 0
+    private enum ScheduleKind {
+        case debounce
+        case throttle
+    }
+
+    private struct ScheduleKey: Hashable {
+        let kind: ScheduleKind
+        let identifier: String
+    }
+
+    private struct ScheduleEntry {
+        var pending: Task<Void, Never>?
+        var pendingGeneration: UInt64 = 0
         var lastFire: ContinuousClock.Instant?
     }
 
-    private struct ThrottleEntry {
-        var trailing: Task<Void, Never>?
-        var trailingGeneration: UInt64 = 0
-        var lastFire: ContinuousClock.Instant?
-    }
-
-    private var debounceEntries: [String: DebounceEntry] = [:]
-    private var throttleEntries: [String: ThrottleEntry] = [:]
+    private var entries: [ScheduleKey: ScheduleEntry] = [:]
     private let clock = ContinuousClock()
     private var nextGeneration: UInt64 = 0
 
     func debounce(
-        _ duration: Duration = .seconds(1.0),
-        identifier: String = "\(Thread.callStackSymbols)",
-        by actor: ActorType = .mainActor,
-        option: DebounceOptions = .default,
-        operation: LegacyOperation
-    ) async {
-        let asyncOperation: @Sendable () async -> Void = {
-            await actor.run(operation)
-        }
-        await debounce(duration, identifier: identifier, by: .taskContext, option: option, operation: asyncOperation)
-    }
-
-    func debounce(
-        _ duration: Duration = .seconds(1.0),
-        identifier: String = "\(Thread.callStackSymbols)",
-        by actor: ActorType = .mainActor,
-        option: DebounceOptions = .default,
+        _ duration: Duration,
+        identifier: String,
+        by actor: ActorType,
+        option: DebounceOptions,
         operation: @escaping @Sendable () async -> Void
     ) async {
-        if duration <= .seconds(0.0) {
+        if duration <= .zero {
             await actor.run(operation)
             return
         }
 
+        let key = ScheduleKey(kind: .debounce, identifier: identifier)
         let now = clock.now
-        var entry = debounceEntries[identifier] ?? DebounceEntry()
 
-        switch option {
-        case .default:
-            break
-        case .runFirst:
-            if canRunDebounceImmediately(entry: entry, now: now, duration: duration) {
-                entry.lastFire = now
-                debounceEntries[identifier] = entry
-                await actor.run(operation)
-                markDebounceImmediateFired(identifier: identifier)
-                return
-            }
-        }
-
-        scheduleDebounceTrailing(
-            entry: &entry,
-            identifier: identifier,
-            after: duration,
-            actor: actor,
-            operation: operation
-        )
-        debounceEntries[identifier] = entry
-    }
-
-    func throttle(
-        _ duration: Duration = .seconds(1.0),
-        identifier: String = "\(Thread.callStackSymbols)",
-        by actor: ActorType = .mainActor,
-        option: ThrottleOptions = .default,
-        operation: LegacyOperation
-    ) async {
-        let asyncOperation: @Sendable () async -> Void = {
+        if option == .runFirst, canRunDebounceImmediately(entry: entries[key], now: now, duration: duration) {
+            stampLastFire(key: key, at: now)
             await actor.run(operation)
+            stampLastFire(key: key, at: clock.now)
+            return
         }
-        await throttle(duration, identifier: identifier, by: .taskContext, option: option, operation: asyncOperation)
+
+        scheduleTrailing(key: key, after: duration, actor: actor, operation: operation)
     }
 
     func throttle(
-        _ duration: Duration = .seconds(1.0),
-        identifier: String = "\(Thread.callStackSymbols)",
-        by actor: ActorType = .mainActor,
-        option: ThrottleOptions = .default,
+        _ duration: Duration,
+        identifier: String,
+        by actor: ActorType,
+        option: ThrottleOptions,
         operation: @escaping @Sendable () async -> Void
     ) async {
-        if duration <= .seconds(0.0) {
+        if duration <= .zero {
             await actor.run(operation)
             return
         }
 
+        let key = ScheduleKey(kind: .throttle, identifier: identifier)
         let now = clock.now
-        var entry = throttleEntries[identifier] ?? ThrottleEntry()
+        let entry = entries[key]
 
         if canRunThrottleImmediately(entry: entry, now: now, duration: duration) {
-            entry.trailing?.cancel()
-            entry.trailing = nil
-            entry.lastFire = now
-            throttleEntries[identifier] = entry
+            cancelPending(key: key)
+            stampLastFire(key: key, at: now)
             await actor.run(operation)
             return
         }
 
-        guard option == .ensureLast else {
-            throttleEntries[identifier] = entry
-            return
-        }
+        guard option == .ensureLast else { return }
 
-        scheduleThrottleTrailing(
-            entry: &entry,
-            identifier: identifier,
+        scheduleTrailing(
+            key: key,
             after: remainingThrottleDuration(entry: entry, now: now, duration: duration),
             actor: actor,
             operation: operation
         )
-        throttleEntries[identifier] = entry
     }
 
     func delay(
-        _ duration: Duration = .seconds(1.0),
-        by actor: ActorType = .mainActor,
-        operation: LegacyOperation
-    ) async {
-        let asyncOperation: @Sendable () async -> Void = {
-            await actor.run(operation)
-        }
-        await delay(duration, by: .taskContext, operation: asyncOperation)
-    }
-
-    func delay(
-        _ duration: Duration = .seconds(1.0),
-        by actor: ActorType = .mainActor,
+        _ duration: Duration,
+        by actor: ActorType,
         operation: @escaping @Sendable () async -> Void
     ) async {
-        if duration <= .seconds(0.0) {
+        if duration <= .zero {
             await actor.run(operation)
             return
         }
 
-        let clock = self.clock
         await sleep(for: duration, clock: clock)
         guard !Task.isCancelled else { return }
         await actor.run(operation)
     }
 
     private func canRunDebounceImmediately(
-        entry: DebounceEntry,
+        entry: ScheduleEntry?,
         now: ContinuousClock.Instant,
         duration: Duration
     ) -> Bool {
-        guard entry.scheduled == nil else { return false }
+        guard let entry else { return true }
+        guard entry.pending == nil else { return false }
         guard let lastFire = entry.lastFire else { return true }
         return (now - lastFire) >= duration
     }
 
     private func canRunThrottleImmediately(
-        entry: ThrottleEntry,
+        entry: ScheduleEntry?,
         now: ContinuousClock.Instant,
         duration: Duration
     ) -> Bool {
-        guard let lastFire = entry.lastFire else { return true }
+        guard let lastFire = entry?.lastFire else { return true }
         return (now - lastFire) >= duration
     }
 
     private func remainingThrottleDuration(
-        entry: ThrottleEntry,
+        entry: ScheduleEntry?,
         now: ContinuousClock.Instant,
         duration: Duration
     ) -> Duration {
-        guard let lastFire = entry.lastFire else { return .seconds(0.0) }
+        guard let lastFire = entry?.lastFire else { return .zero }
         return duration - (now - lastFire)
     }
 
-    private func scheduleDebounceTrailing(
-        entry: inout DebounceEntry,
-        identifier: String,
+    private func scheduleTrailing(
+        key: ScheduleKey,
         after duration: Duration,
         actor: ActorType,
         operation: @escaping @Sendable () async -> Void
     ) {
-        entry.scheduled?.cancel()
-        let generation = nextScheduledGeneration()
-        entry.scheduledGeneration = generation
+        var entry = entries[key] ?? ScheduleEntry()
+        entry.pending?.cancel()
 
-        let clock = self.clock
-        entry.scheduled = Task { [weak self] in
-            await sleep(for: duration, clock: clock)
-            guard !Task.isCancelled else { return }
-            guard let self else { return }
-            guard await self.markDebounceReady(identifier: identifier, generation: generation) else { return }
-
-            await actor.run(operation)
-        }
-    }
-
-    private func scheduleThrottleTrailing(
-        entry: inout ThrottleEntry,
-        identifier: String,
-        after duration: Duration,
-        actor: ActorType,
-        operation: @escaping @Sendable () async -> Void
-    ) {
-        entry.trailing?.cancel()
-        let generation = nextScheduledGeneration()
-        entry.trailingGeneration = generation
-
-        let clock = self.clock
-        entry.trailing = Task { [weak self] in
-            await sleep(for: duration, clock: clock)
-            guard !Task.isCancelled else { return }
-            guard let self else { return }
-            guard await self.markThrottleTrailingReady(identifier: identifier, generation: generation) else { return }
-
-            await actor.run(operation)
-        }
-    }
-
-    private func markDebounceReady(identifier: String, generation: UInt64) -> Bool {
-        guard var entry = debounceEntries[identifier] else { return false }
-        guard entry.scheduledGeneration == generation else { return false }
-        entry.scheduled = nil
-        entry.lastFire = clock.now
-        debounceEntries[identifier] = entry
-        return true
-    }
-
-    private func markThrottleTrailingReady(identifier: String, generation: UInt64) -> Bool {
-        guard var entry = throttleEntries[identifier] else { return false }
-        guard entry.trailingGeneration == generation else { return false }
-        entry.trailing = nil
-        entry.lastFire = clock.now
-        throttleEntries[identifier] = entry
-        return true
-    }
-
-    private func markDebounceImmediateFired(identifier: String) {
-        guard var entry = debounceEntries[identifier] else { return }
-        entry.lastFire = clock.now
-        debounceEntries[identifier] = entry
-    }
-
-    private func nextScheduledGeneration() -> UInt64 {
         nextGeneration &+= 1
-        return nextGeneration
+        let generation = nextGeneration
+        entry.pendingGeneration = generation
+
+        let clock = self.clock
+        entry.pending = Task { [weak self] in
+            await sleep(for: duration, clock: clock)
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            guard await self.markPendingReady(key: key, generation: generation) else { return }
+
+            await actor.run(operation)
+        }
+        entries[key] = entry
+    }
+
+    private func markPendingReady(key: ScheduleKey, generation: UInt64) -> Bool {
+        guard var entry = entries[key] else { return false }
+        guard entry.pendingGeneration == generation else { return false }
+        entry.pending = nil
+        entry.lastFire = clock.now
+        entries[key] = entry
+        return true
+    }
+
+    private func stampLastFire(key: ScheduleKey, at instant: ContinuousClock.Instant) {
+        var entry = entries[key] ?? ScheduleEntry()
+        entry.lastFire = instant
+        entries[key] = entry
+    }
+
+    private func cancelPending(key: ScheduleKey) {
+        guard var entry = entries[key] else { return }
+        entry.pending?.cancel()
+        entry.pending = nil
+        entries[key] = entry
     }
 }
 
 @Sendable
 func sleep(for duration: Duration, clock: ContinuousClock) async {
-    guard duration > .seconds(0.0) else { return }
+    guard duration > .zero else { return }
     try? await clock.sleep(for: duration)
 }

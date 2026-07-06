@@ -225,7 +225,7 @@ for i in Array(0...100) {
     }
 }
 
-// debounce : 1        => 💥
+// debounce : 0        => 💥 (runs immediately)
 // debounce : 100
 ```
 
@@ -245,7 +245,7 @@ for i in 1...100000 {
     }
 }
 
-// throttle: 0
+// throttle: 1
 // throttle: 41919
 // throttle: 86807
 
@@ -262,7 +262,7 @@ for i in 1...100000 {
     }
 }
 
-// throttle : 0 
+// throttle : 1
 // throttle : 16363 
 // throttle : 52307
 // throttle : 74711
@@ -443,7 +443,9 @@ throttle {
 
 # :warning: Important Note on Identifiers parameters for debounce and throttle
 
-> **Highly Recommended**: While the functions are intentionally designed to run out of the box without specifying an identifier in favor of brevity, it is **strongly recommended** to provide a custom identifier for `debounce` and `throttle` operations for better control and organization.
+By default, `debounce` and `throttle` group calls by their call site (file, line, and column): repeated calls from the same source location share one group. This default is deterministic and costs nothing at runtime.
+
+> **Highly Recommended**: While the functions are intentionally designed to run out of the box without specifying an identifier in favor of brevity, it is **strongly recommended** to provide a custom identifier for `debounce` and `throttle` operations for better control and organization — and it is required when you want to group calls across different call sites or per dynamic value.
 
 ### Example with Custom Identifier
 
@@ -474,6 +476,17 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 }
 
 ```
+
+# Throttler V2.2.4 - Internals hardening update
+
+## What's New in V2.2.4
+
+- `debounce` and `throttle` derive their default `identifier` from the call site (file, line, and column) instead of `Thread.callStackSymbols`. The contract is unchanged — calls from the same source location share one group — but the default is now deterministic across threads and optimization levels, and no longer pays the cost of capturing and symbolicating a stack trace on every defaulted call.
+- The synchronous `debounce`/`throttle` overloads gained automatically populated `fileID`/`line`/`column` parameters that back the call-site default. You never pass them, and explicit-identifier calls behave exactly as before.
+- Unified the internal debounce/throttle scheduling state into one machinery with identical behavior. Debounce and throttle state remain fully independent per identifier, now pinned by a test.
+- `ActorType` cases are documented honestly: `.mainActor` guarantees the main actor for synchronous closures while a nonisolated async closure body still runs on the global executor, and `.currentActor` is a legacy alias for `.taskContext`.
+- Removed the stale `LinuxMain.swift`/`XCTestManifests.swift` test scaffolding, which referenced a nonexistent test list.
+- Added tests for default-identifier grouping (same call site coalesces, distinct call sites stay independent) and for debounce/throttle state independence under a shared identifier.
 
 # Throttler V2.2.3 - Time and retry update
 
@@ -536,11 +549,11 @@ iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ## Swift Package Manager
 
-To use the latest V2.2.3 version, add the package to your `Package.swift`:
+To use the latest V2.2.4 version, add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.3"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.4"))
 ]
 ```
 

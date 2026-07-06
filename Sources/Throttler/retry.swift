@@ -5,8 +5,6 @@
 //  Created by seoksoon jang on 2026-07-06.
 //
 
-import Foundation
-
 /// The error thrown by `retry` before running when its arguments are invalid.
 public enum RetryError: Error, Equatable, Sendable {
     /// The maximum attempt count was less than or equal to zero.

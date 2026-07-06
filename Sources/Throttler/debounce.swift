@@ -5,69 +5,69 @@
 //  Created by seoksoon jang on 2023-04-03.
 //
 
-import Foundation
-
 /**
- Debounce Function
+ Debounces an operation: of the calls made within `duration`, only the latest one runs.
 
  - Parameters:
-   - duration: Foundation `Duration` type such as `.seconds(2.0)`. Default is .seconds(1.0)
-   - identifier: A unique identifier for this debounce operation. By default, it uses the call stack symbols as the identifier. You can provide a custom identifier to group related debounce operations. It is highly recommended to use your own identifier to avoid unexpected behavior, but you can use the internal stack trace identifier at your own risk.
-   - actorType: The actor context in which to run the operation. Use `.main` to run the operation on the main actor or `.current` for the current actor context.
-   - option: The debounce option to control the behavior of the debounce operation. You can choose between `.default` and `.runFirst`. The default behavior delays the operation execution by the specified duration, while `runFirst` executes the operation immediately and applies debounce to subsequent calls.
-   - operation: The operation to debounce. This is a closure that contains the code to be executed when the debounce conditions are met.
+   - duration: The debounce window, such as `.seconds(2.0)`. The default is `.seconds(1.0)`.
+   - identifier: The identifier that groups related debounce calls. When omitted, calls are
+     grouped by call site (file, line, and column), so repeated calls from the same source
+     location share one debounce group. Provide a custom identifier to group calls across
+     call sites or to debounce per dynamic value.
+   - actor: The `ActorType` context the operation runs in. The default is `.mainActor`.
+   - option: `.default` delays every call; `.runFirst` runs the first eligible call
+     immediately and debounces subsequent calls.
+   - fileID: Populated automatically to derive the default call-site identifier. Do not pass.
+   - line: Populated automatically to derive the default call-site identifier. Do not pass.
+   - column: Populated automatically to derive the default call-site identifier. Do not pass.
+   - operation: The operation to debounce.
 
  - Note:
-   - The provided `identifier` is used to group related debounce operations. If multiple debounce calls share the same identifier, they will be considered as part of the same group, and the debounce behavior will apply collectively.
-   - This method ensures that the operation is executed in a thread-safe manner within the specified actor context.
+   - Calls that share an identifier form one debounce group; the latest call wins.
+   - An operation that already started running is never cancelled by a newer call.
 
  - Example:
    ```swift
-   // Debounce a button tap action to prevent rapid execution.
-   @IBAction func buttonTapped(_ sender: UIButton) {
-       // Basic debounce with default options
- 
-       debounce {
-           print("Button tapped (debounced with default option)")
-       }
+   debounce {
+       print("debounced")
+   }
 
-       // Using custom identifiers
- 
-       debounce(.seconds(1.0), identifier: "customIdentifier") {
-           print("Custom debounced operation with identifier")
-       }
-       
-       // Using 'runFirst' option to execute the first operation immediately and debounce the rest
- 
-       debounce(.seconds(1.0), identifier: "runFirstExample", option: .runFirst) {
-           print("Debounced operation using runFirst option")
-       }
+   debounce(.seconds(1.0), identifier: "customIdentifier") {
+       print("debounced with a custom identifier")
+   }
+
+   debounce(.seconds(1.0), identifier: "runFirstExample", option: .runFirst) {
+       print("first call runs immediately, the rest debounce")
    }
    ```
 
- - See Also:
-    - DebounceOptions: Enum that defines various options for controlling debounce behavior.
+ - See Also: `DebounceOptions`
 */
-
 public func debounce(
     _ duration: Duration = .seconds(1.0),
-    identifier: String = "\(Thread.callStackSymbols)",
+    identifier: String = callSiteDefaultIdentifier,
     by `actor`: ActorType = .mainActor,
     option: DebounceOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
     operation: @escaping () -> Void
 ) {
-    let operation = LegacyOperation(operation)
+    let legacyOperation = LegacyOperation(operation)
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
     Task {
         await throttler.debounce(
             duration,
             identifier: identifier,
-            by: actor,
+            by: .taskContext,
             option: option,
-            operation: operation
+            operation: { await actor.run(legacyOperation) }
         )
     }
 }
 
+/// Debounces an async throwing operation and returns the scheduling task.
+/// Errors thrown by `operation` are delivered to `onError`.
 @discardableResult
 public func debounce(
     _ duration: Duration = .seconds(1.0),

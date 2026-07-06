@@ -807,4 +807,81 @@ final class ThrottlerTests: XCTestCase {
         let attempts = await counter.value()
         XCTAssertEqual(attempts, 1)
     }
+
+    func testDebounceDefaultIdentifierCoalescesCallsFromSameCallSite() async {
+        let recorder = Recorder()
+
+        for value in 1...5 {
+            debounce(.milliseconds(100)) {
+                Task {
+                    await recorder.append(value)
+                }
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(400))
+
+        let count = await recorder.count()
+        XCTAssertEqual(count, 1)
+    }
+
+    func testDebounceDefaultIdentifierSeparatesDifferentCallSites() async {
+        let recorder = Recorder()
+
+        debounce(.milliseconds(50)) {
+            Task {
+                await recorder.append(1)
+            }
+        }
+        debounce(.milliseconds(50)) {
+            Task {
+                await recorder.append(2)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values.sorted(), [1, 2])
+    }
+
+    func testThrottleDefaultIdentifierThrottlesBurstFromSameCallSite() async {
+        let recorder = Recorder()
+
+        for value in 1...5 {
+            throttle(.milliseconds(100)) {
+                Task {
+                    await recorder.append(value)
+                }
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(300))
+
+        let count = await recorder.count()
+        XCTAssertEqual(count, 1)
+    }
+
+    func testDebounceAndThrottleStateAreIndependentForSameIdentifier() async {
+        let recorder = Recorder()
+        let identifier = UUID().uuidString
+
+        let throttleTask = throttle(.milliseconds(80), identifier: identifier, by: .taskContext) {
+            await recorder.append(1)
+        }
+        await throttleTask.value
+
+        let debounceTask = debounce(.milliseconds(80), identifier: identifier, by: .taskContext, option: .runFirst) {
+            await recorder.append(2)
+        }
+        await debounceTask.value
+
+        let immediateValues = await recorder.values()
+        XCTAssertEqual(immediateValues, [1, 2])
+
+        try? await Task.sleep(for: .milliseconds(200))
+
+        let finalValues = await recorder.values()
+        XCTAssertEqual(finalValues, [1, 2])
+    }
 }

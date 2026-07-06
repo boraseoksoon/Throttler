@@ -5,70 +5,69 @@
 //  Created by seoksoon jang on 2023-04-03.
 //
 
-import Foundation
-
 /**
- Limits the frequency of executing a given operation to ensure it is not called more frequently than a specified duration.
+ Throttles an operation: the first eligible call runs immediately, and further calls
+ within `duration` are suppressed.
 
  - Parameters:
-   - duration: Foundation `Duration` type such as `.seconds(2.0)`. By default, .seconds(1.0)
-   - identifier: (Optional) An identifier to distinguish between throttled operations. It is highly recommended to provide a custom identifier for clarity and to avoid potential issues with long call stack symbols. Use at your own risk with internal stack traces.
-   - actorType: The actor type on which the operation should be executed (default is `.main`).
-   - option: An option to customize the behavior of the throttle (default is `.default`).
-   - operation: The operation to be executed when throttled.
+   - duration: The throttle window, such as `.seconds(2.0)`. The default is `.seconds(1.0)`.
+   - identifier: The identifier that groups related throttle calls. When omitted, calls are
+     grouped by call site (file, line, and column), so repeated calls from the same source
+     location share one throttle group. Provide a custom identifier to group calls across
+     call sites or to throttle per dynamic value.
+   - actor: The `ActorType` context the operation runs in. The default is `.mainActor`.
+   - option: `.default` drops suppressed calls; `.ensureLast` runs the latest suppressed
+     call at the end of the throttle window.
+   - fileID: Populated automatically to derive the default call-site identifier. Do not pass.
+   - line: Populated automatically to derive the default call-site identifier. Do not pass.
+   - column: Populated automatically to derive the default call-site identifier. Do not pass.
+   - operation: The operation to throttle.
 
  - Note:
-   - The provided `identifier` is used to group related throttle operations. If multiple throttle calls share the same identifier, they will be considered as part of the same group, and the throttle behavior will apply collectively.
-   - This method ensures that the operation is executed in a thread-safe manner within the specified actor context.
+   - Calls that share an identifier form one throttle group.
 
- - Usage:
-    ```swift
-    // Throttle a button tap action to prevent rapid execution.
-    @IBAction func buttonTapped(_ sender: UIButton) {
-        // Basic usage with default options
- 
-        throttle {
-            print("Button tapped (throttled with default option)")
-        }
+ - Example:
+   ```swift
+   throttle {
+       print("throttled")
+   }
 
-        // Using custom identifiers to distinguish between throttled operations
- 
-        throttle(.seconds(3.0), identifier: "customIdentifier") {
-            print("Custom throttled operation with identifier")
-        }
+   throttle(.seconds(3.0), identifier: "customIdentifier") {
+       print("throttled with a custom identifier")
+   }
 
-        // Using 'ensureLast' option to guarantee that the last call is executed
- 
-        throttle(.seconds(3.0), identifier: "ensureLastExample", option: .ensureLast) {
-            print("Throttled operation using ensureLast option")
-        }
-    }
+   throttle(.seconds(3.0), identifier: "ensureLastExample", option: .ensureLast) {
+       print("the latest suppressed call also runs")
+   }
    ```
- 
- - See Also:
-    - ThrottleOptions: Enum that defines various options for controlling throttle behavior.
- 
- */
 
+ - See Also: `ThrottleOptions`
+*/
 public func throttle(
     _ duration: Duration = .seconds(1.0),
-    identifier: String = "\(Thread.callStackSymbols)",
+    identifier: String = callSiteDefaultIdentifier,
     by `actor`: ActorType = .mainActor,
     option: ThrottleOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
     operation: @escaping () -> Void
 ) {
-    let operation = LegacyOperation(operation)
+    let legacyOperation = LegacyOperation(operation)
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
     Task {
         await throttler.throttle(
             duration,
             identifier: identifier,
-            by: actor,
+            by: .taskContext,
             option: option,
-            operation: operation
+            operation: { await actor.run(legacyOperation) }
         )
     }
 }
 
+/// Throttles an async throwing operation and returns the scheduling task.
+/// Errors thrown by `operation` are delivered to `onError`.
 @discardableResult
 public func throttle(
     _ duration: Duration = .seconds(1.0),

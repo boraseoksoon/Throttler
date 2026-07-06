@@ -5,8 +5,6 @@
 //  Created by seoksoon jang on 2026-07-06.
 //
 
-import Foundation
-
 public func sleep(_ duration: Duration = .seconds(1.0)) async {
     guard duration > .seconds(0.0) else { return }
     try? await Task.sleep(for: duration)
