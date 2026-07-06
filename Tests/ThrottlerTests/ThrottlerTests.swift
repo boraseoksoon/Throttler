@@ -11,6 +11,32 @@ actor Recorder {
     func values() -> [Int] {
         recordedValues
     }
+
+    func count() -> Int {
+        recordedValues.count
+    }
+}
+
+enum ThrottlerTestError: Error {
+    case expected
+}
+
+actor ThrowingCounter {
+    private var count = 0
+
+    func next() throws -> Int {
+        count += 1
+
+        if count == 2 {
+            throw ThrottlerTestError.expected
+        }
+
+        return count
+    }
+
+    func value() -> Int {
+        count
+    }
 }
 
 final class ThrottlerTests: XCTestCase {
@@ -341,5 +367,125 @@ final class ThrottlerTests: XCTestCase {
 
         let values = await recorder.values()
         XCTAssertEqual(values, [1])
+    }
+
+    func testRepeatRunsRequestedNumberOfTimes() async {
+        let recorder = Recorder()
+
+        let task = `repeat`(every: .milliseconds(10), times: 3, by: .taskContext) {
+            await recorder.append(1)
+        }
+
+        await task.value
+
+        let count = await recorder.count()
+        XCTAssertEqual(count, 3)
+    }
+
+    func testRepeatCanStartImmediately() async {
+        let recorder = Recorder()
+
+        let task = `repeat`(
+            every: .seconds(1),
+            times: 1,
+            startingImmediately: true,
+            by: .taskContext
+        ) {
+            await recorder.append(1)
+        }
+
+        await task.value
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [1])
+    }
+
+    func testRepeatTaskCanBeCancelledBeforeFirstRun() async {
+        let recorder = Recorder()
+
+        let task = `repeat`(every: .milliseconds(100), by: .taskContext) {
+            await recorder.append(1)
+        }
+
+        task.cancel()
+        await task.value
+        try? await Task.sleep(for: .milliseconds(140))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [])
+    }
+
+    func testRepeatStopsAndCallsErrorHandlerWhenIterationThrows() async {
+        let recorder = Recorder()
+        let counter = ThrowingCounter()
+        let expectation = expectation(description: "repeat error handler called")
+
+        let task = `repeat`(
+            every: .milliseconds(10),
+            times: 5,
+            startingImmediately: true,
+            by: .taskContext,
+            onError: { error in
+                if error is ThrottlerTestError {
+                    expectation.fulfill()
+                }
+            }
+        ) {
+            let value = try await counter.next()
+            await recorder.append(value)
+        }
+
+        await task.value
+        await fulfillment(of: [expectation], timeout: 1.0)
+
+        let values = await recorder.values()
+        let attempts = await counter.value()
+        XCTAssertEqual(values, [1])
+        XCTAssertEqual(attempts, 2)
+    }
+
+    func testTimeoutReturnsOperationValueBeforeDeadline() async throws {
+        let value = try await timeout(.milliseconds(100)) {
+            42
+        }
+
+        XCTAssertEqual(value, 42)
+    }
+
+    func testTimeoutThrowsWhenDeadlineWinsAndCancelsOperation() async {
+        let recorder = Recorder()
+
+        do {
+            _ = try await timeout(.milliseconds(30)) {
+                do {
+                    try await Task.sleep(for: .milliseconds(200))
+                    await recorder.append(1)
+                    return 1
+                } catch {
+                    await recorder.append(-1)
+                    throw error
+                }
+            }
+            XCTFail("Expected timeout to throw")
+        } catch TimeoutError.timedOut(let duration) {
+            XCTAssertEqual(duration, .milliseconds(30))
+        } catch {
+            XCTFail("Expected TimeoutError, got \(error)")
+        }
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [-1])
+    }
+
+    func testTimeoutPropagatesOperationErrorBeforeDeadline() async {
+        do {
+            _ = try await timeout(.milliseconds(100)) {
+                throw ThrottlerTestError.expected
+            }
+            XCTFail("Expected operation error to throw")
+        } catch ThrottlerTestError.expected {
+        } catch {
+            XCTFail("Expected operation error, got \(error)")
+        }
     }
 }

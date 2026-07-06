@@ -51,6 +51,17 @@ public enum ActorType: Sendable {
         }
     }
 
+    func run(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        switch self {
+        case .mainActor:
+            try await Self.runOnMainActor(operation)
+        case .ownedActor:
+            try await Self.runOnOwnedActor(operation)
+        case .currentActor, .taskContext:
+            try await operation()
+        }
+    }
+
     @MainActor
     private static func runOnMainActor(_ operation: LegacyOperation) {
         operation.run()
@@ -61,12 +72,21 @@ public enum ActorType: Sendable {
         await operation()
     }
 
+    @MainActor
+    private static func runOnMainActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        try await operation()
+    }
+
     private static func runOnOwnedActor(_ operation: LegacyOperation) async {
         await ownedActorExecutor.run(operation)
     }
 
     private static func runOnOwnedActor(_ operation: @escaping @Sendable () async -> Void) async {
         await ownedActorExecutor.run(operation)
+    }
+
+    private static func runOnOwnedActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        try await ownedActorExecutor.run(operation)
     }
 }
 
@@ -79,6 +99,10 @@ private actor OwnedActorExecutor {
 
     func run(_ operation: @escaping @Sendable () async -> Void) async {
         await operation()
+    }
+
+    func run(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        try await operation()
     }
 }
 

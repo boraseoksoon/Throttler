@@ -8,7 +8,7 @@
 
 # Throttler
 
-Drop one line to use throttle, debounce, and delay with full thread safety: say goodbye to reactive programming like RxSwift and Combine.
+Drop one line to use throttle, debounce, delay, repeat, and timeout with Swift concurrency: say goodbye to reactive programming like RxSwift and Combine.
 
 # At a glance
 
@@ -26,6 +26,14 @@ throttle {
 
 delay {
     print("delay 1 sec")
+}
+
+`repeat`(every: .seconds(1), times: 3) {
+    print("repeat every 1 sec, 3 times")
+}
+
+let value = try await timeout(.seconds(3)) {
+    try await fetchValue()
 }
 
 ```
@@ -80,12 +88,15 @@ struct ContentView: View {
 - **Throttle**: Limit how often an operation can be triggered over time. Thanks to Swift's actor model, this operation is thread-safe.
 - **Debounce**: Delay the execution of an operation until a certain time has passed without any more triggers. This operation is also thread-safe, courtesy of Swift's actor model.
 - **Delay**: Execute an operation after a certain amount of time. With Swift's actor model, you can rest assured that this operation is thread-safe too.
+- **Repeat**: Run an operation on a serial cadence for a fixed number of times or until the returned task is cancelled.
+- **Timeout**: Put a maximum duration around async work and cancel the operation task when the deadline wins.
 
 # 🦾 Thread Safety
-All of these operations are executed in a thread-safe manner, leveraging the Swift actor model.
-This guarantees safe access and modification of shared mutable state within the closure of throttle, debounce, and delay functions, regardless of the number of threads involved.
+`throttle`, `debounce`, `delay`, and `repeat` can run their operations through `ActorType`, leveraging the Swift actor model.
+This supports safe access and modification of shared mutable state within those scheduled closures when you choose the right actor context.
+`timeout` bounds async work with task cancellation; use normal Swift actor isolation for mutable state inside the timed operation.
 
-Feed any shared resource into them (debounce, throttle, debounce). The functions will handle everything out of box.
+Feed shared resources into the actor-backed scheduling functions. They will handle actor execution out of box.
 
 ```swift
 import Foundation
@@ -252,6 +263,52 @@ for i in 1...100000 {
 
 Throttler makes it extremely simple and easy to use advanced features with just a one-liner, unlike RxSwift and Combine where custom implementations are often required.
 
+## Repeat
+
+`repeat` is for periodic work. Because `repeat` is a Swift keyword, call it with backticks.
+
+```swift
+let task = `repeat`(every: .seconds(5), times: 3, by: .mainActor) {
+    await refreshStatus()
+}
+
+// Stop future iterations when needed.
+task.cancel()
+```
+
+Behavior contract:
+
+- `times: nil` repeats until the returned task is cancelled.
+- `times: 3` runs exactly three successful iterations unless cancelled or an iteration throws.
+- `startingImmediately: true` runs once right away, then waits before future iterations.
+- `startingImmediately: false` waits first, then runs.
+- Iterations never overlap. The next wait starts after the current operation finishes.
+- A non-positive interval completes without running to avoid a busy loop.
+- If an iteration throws, `onError` is called and the repeat loop stops.
+
+## Timeout
+
+`timeout` is for bounding async work that has already started.
+
+```swift
+do {
+    let response = try await timeout(.seconds(3)) {
+        try await api.fetch()
+    }
+    print(response)
+} catch TimeoutError.timedOut(_) {
+    print("request timed out")
+}
+```
+
+Behavior contract:
+
+- If the operation finishes first, `timeout` returns the operation value.
+- If the operation throws first, `timeout` throws the operation error.
+- If the deadline wins, `timeout` cancels the operation child task and throws `TimeoutError.timedOut(duration)` after structured child-task cleanup completes.
+- A non-positive timeout duration throws `TimeoutError.timedOut(duration)` immediately.
+- Swift task cancellation is cooperative, so blocking or cancellation-ignoring operations can delay cleanup.
+
 # Comparison with RxSwift and Combine for the advanced options in code
 
 - **RxSwift**:
@@ -334,6 +391,16 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 
 ```
 
+# Throttler V2.2.2 - Repeat and timeout update
+
+## What's New in V2.2.2
+
+- Added `` `repeat`(every:times:startingImmediately:by:onError:operation:) `` for serial periodic work.
+- Added `timeout(_:operation:)` for value-returning async operations with a maximum duration.
+- Added `TimeoutError.timedOut(Duration)` so timeout failures can be matched directly.
+- Added tests for repeat count, immediate start, repeat cancellation, repeat error handling, timeout success, timeout cancellation, and operation-error propagation.
+- Documented exact behavior contracts for repeat and timeout so future agents can verify changes against the intended API.
+
 # Throttler V2.2.1 - Safer scheduling update
 
 ## What's New in V2.2.1
@@ -373,11 +440,11 @@ iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ## Swift Package Manager
 
-To use the latest V2.2.1 version, add the package to your `Package.swift`:
+To use the latest V2.2.2 version, add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.1"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.2"))
 ]
 ```
 
