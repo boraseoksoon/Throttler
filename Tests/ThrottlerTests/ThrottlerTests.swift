@@ -17,6 +17,23 @@ actor Recorder {
     }
 }
 
+final class ReportRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedReports: [String] = []
+
+    func append(_ report: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        recordedReports.append(report)
+    }
+
+    func reports() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedReports
+    }
+}
+
 enum ThrottlerTestError: Error {
     case expected
 }
@@ -36,6 +53,52 @@ actor ThrowingCounter {
 
     func value() -> Int {
         count
+    }
+}
+
+actor RetryCounter {
+    private var attempts = 0
+
+    func succeed(on successAttempt: Int) throws -> Int {
+        attempts += 1
+
+        if attempts < successAttempt {
+            throw ThrottlerTestError.expected
+        }
+
+        return attempts
+    }
+
+    func alwaysFail() throws -> Int {
+        attempts += 1
+        throw ThrottlerTestError.expected
+    }
+
+    func cancel() throws -> Int {
+        attempts += 1
+        throw CancellationError()
+    }
+
+    func value() -> Int {
+        attempts
+    }
+}
+
+actor OverlapRecorder {
+    private var running = 0
+    private var maximumRunning = 0
+
+    func start() {
+        running += 1
+        maximumRunning = max(maximumRunning, running)
+    }
+
+    func finish() {
+        running -= 1
+    }
+
+    func maximum() -> Int {
+        maximumRunning
     }
 }
 
@@ -444,6 +507,68 @@ final class ThrottlerTests: XCTestCase {
         XCTAssertEqual(attempts, 2)
     }
 
+    func testRepeatDoesNotRunForNonPositiveIntervalOrLimit() async {
+        let recorder = Recorder()
+
+        let zeroIntervalTask = `repeat`(every: .milliseconds(0), times: 1, by: .taskContext) {
+            await recorder.append(1)
+        }
+
+        let zeroLimitTask = `repeat`(every: .milliseconds(10), times: 0, by: .taskContext) {
+            await recorder.append(2)
+        }
+
+        await zeroIntervalTask.value
+        await zeroLimitTask.value
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [])
+    }
+
+    func testRepeatIterationsDoNotOverlap() async {
+        let recorder = OverlapRecorder()
+
+        let task = `repeat`(
+            every: .milliseconds(1),
+            times: 3,
+            startingImmediately: true,
+            by: .taskContext
+        ) {
+            await recorder.start()
+            try await Task.sleep(for: .milliseconds(20))
+            await recorder.finish()
+        }
+
+        await task.value
+
+        let maximum = await recorder.maximum()
+        XCTAssertEqual(maximum, 1)
+    }
+
+    func testRepeatCancellationErrorDoesNotCallErrorHandler() async {
+        let recorder = Recorder()
+
+        let task = `repeat`(
+            every: .milliseconds(10),
+            times: 2,
+            startingImmediately: true,
+            by: .taskContext,
+            onError: { _ in
+                Task {
+                    await recorder.append(1)
+                }
+            }
+        ) {
+            throw CancellationError()
+        }
+
+        await task.value
+        try? await Task.sleep(for: .milliseconds(50))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [])
+    }
+
     func testTimeoutReturnsOperationValueBeforeDeadline() async throws {
         let value = try await timeout(.milliseconds(100)) {
             42
@@ -487,5 +612,199 @@ final class ThrottlerTests: XCTestCase {
         } catch {
             XCTFail("Expected operation error, got \(error)")
         }
+    }
+
+    func testTimeoutNonPositiveDurationThrowsImmediatelyWithoutRunningOperation() async {
+        let recorder = Recorder()
+
+        do {
+            _ = try await timeout(.milliseconds(0)) {
+                await recorder.append(1)
+                return 1
+            }
+            XCTFail("Expected timeout to throw")
+        } catch TimeoutError.timedOut(let duration) {
+            XCTAssertEqual(duration, .milliseconds(0))
+        } catch {
+            XCTFail("Expected TimeoutError, got \(error)")
+        }
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [])
+    }
+
+    func testTimeSyncReturnsValueAndReportsCompactSuccess() {
+        let recorder = ReportRecorder()
+
+        let value = time("sync work", report: { recorder.append($0) }) {
+            7
+        }
+
+        let reports = recorder.reports()
+        XCTAssertEqual(value, 7)
+        XCTAssertEqual(reports.count, 1)
+        XCTAssertTrue(reports[0].hasPrefix("[Throttler] sync work completed in "))
+    }
+
+    func testTimeSyncReportsFailureAndRethrowsOriginalError() {
+        let recorder = ReportRecorder()
+
+        do {
+            _ = try time("sync failure", report: { recorder.append($0) }) {
+                throw ThrottlerTestError.expected
+            }
+            XCTFail("Expected operation error to throw")
+        } catch ThrottlerTestError.expected {
+        } catch {
+            XCTFail("Expected original operation error, got \(error)")
+        }
+
+        let reports = recorder.reports()
+        XCTAssertEqual(reports.count, 1)
+        XCTAssertTrue(reports[0].hasPrefix("[Throttler] sync failure failed in "))
+        XCTAssertTrue(reports[0].contains("expected"))
+    }
+
+    func testTimeAsyncVoidReportsVerboseSuccess() async {
+        let recorder = Recorder()
+        let reportRecorder = ReportRecorder()
+
+        await time("async void", style: .verbose, report: { reportRecorder.append($0) }) {
+            await recorder.append(1)
+        }
+
+        let values = await recorder.values()
+        let reports = reportRecorder.reports()
+        XCTAssertEqual(values, [1])
+        XCTAssertEqual(reports.count, 1)
+        XCTAssertTrue(reports[0].hasPrefix("[Throttler] label=\"async void\" result=success duration=\""))
+    }
+
+    func testTimeAsyncReportsFailureAndRethrowsOriginalError() async {
+        let recorder = ReportRecorder()
+
+        do {
+            _ = try await time("async failure", report: { recorder.append($0) }) {
+                await Task.yield()
+                throw ThrottlerTestError.expected
+            }
+            XCTFail("Expected operation error to throw")
+        } catch ThrottlerTestError.expected {
+        } catch {
+            XCTFail("Expected original operation error, got \(error)")
+        }
+
+        let reports = recorder.reports()
+        XCTAssertEqual(reports.count, 1)
+        XCTAssertTrue(reports[0].hasPrefix("[Throttler] async failure failed in "))
+        XCTAssertTrue(reports[0].contains("expected"))
+    }
+
+    func testRetryReturnsFirstSuccess() async throws {
+        let counter = RetryCounter()
+
+        let value = try await retry(3, every: .milliseconds(5)) {
+            try await counter.succeed(on: 3)
+        }
+
+        let attempts = await counter.value()
+        XCTAssertEqual(value, 3)
+        XCTAssertEqual(attempts, 3)
+    }
+
+    func testRetryThrowsLastErrorAfterMaxAttempts() async {
+        let counter = RetryCounter()
+
+        do {
+            _ = try await retry(3, every: .milliseconds(0)) {
+                try await counter.alwaysFail()
+            }
+            XCTFail("Expected retry to throw")
+        } catch ThrottlerTestError.expected {
+        } catch {
+            XCTFail("Expected last operation error, got \(error)")
+        }
+
+        let attempts = await counter.value()
+        XCTAssertEqual(attempts, 3)
+    }
+
+    func testRetryRejectsInvalidAttemptCount() async {
+        do {
+            _ = try await retry(0, every: .milliseconds(1)) {
+                1
+            }
+            XCTFail("Expected invalid attempt count")
+        } catch RetryError.invalidAttemptCount(let count) {
+            XCTAssertEqual(count, 0)
+        } catch {
+            XCTFail("Expected RetryError, got \(error)")
+        }
+    }
+
+    func testRetryDoesNotRetryCancellation() async {
+        let counter = RetryCounter()
+
+        do {
+            _ = try await retry(3, every: .milliseconds(1)) {
+                try await counter.cancel()
+            }
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        let attempts = await counter.value()
+        XCTAssertEqual(attempts, 1)
+    }
+
+    func testRetryWaitsBetweenFailedAttempts() async throws {
+        let counter = RetryCounter()
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        let value = try await retry(2, every: .milliseconds(25)) {
+            try await counter.succeed(on: 2)
+        }
+
+        let elapsed = clock.now - start
+        XCTAssertEqual(value, 2)
+        XCTAssertGreaterThanOrEqual(elapsed, .milliseconds(20))
+    }
+
+    func testRetryNonPositiveDelayRetriesImmediately() async throws {
+        let counter = RetryCounter()
+
+        let value = try await retry(2, every: .milliseconds(0)) {
+            try await counter.succeed(on: 2)
+        }
+
+        let attempts = await counter.value()
+        XCTAssertEqual(value, 2)
+        XCTAssertEqual(attempts, 2)
+    }
+
+    func testRetryStopsWhenParentTaskIsCancelledDuringDelay() async {
+        let counter = RetryCounter()
+        let task = Task {
+            try await retry(2, every: .seconds(1)) {
+                try await counter.alwaysFail()
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        let attempts = await counter.value()
+        XCTAssertEqual(attempts, 1)
     }
 }

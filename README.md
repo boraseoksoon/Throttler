@@ -8,7 +8,7 @@
 
 # Throttler
 
-Drop one line to use throttle, debounce, delay, repeat, and timeout with Swift concurrency: say goodbye to reactive programming like RxSwift and Combine.
+Drop one line to use throttle, debounce, delay, repeat, timeout, time, and retry with Swift concurrency: say goodbye to reactive programming like RxSwift and Combine.
 
 # At a glance
 
@@ -33,6 +33,14 @@ delay {
 }
 
 let value = try await timeout(.seconds(3)) {
+    try await fetchValue()
+}
+
+let measured = try await time("fetch") {
+    try await fetchValue()
+}
+
+let retried = try await retry(3, every: .milliseconds(300)) {
     try await fetchValue()
 }
 
@@ -90,11 +98,13 @@ struct ContentView: View {
 - **Delay**: Execute an operation after a certain amount of time. With Swift's actor model, you can rest assured that this operation is thread-safe too.
 - **Repeat**: Run an operation on a serial cadence for a fixed number of times or until the returned task is cancelled.
 - **Timeout**: Put a maximum duration around async work and cancel the operation task when the deadline wins.
+- **Time**: Measure work without changing its return value or thrown error.
+- **Retry**: Retry temporary async failures with a simple attempt count and delay.
 
 # 🦾 Thread Safety
 `throttle`, `debounce`, `delay`, and `repeat` can run their operations through `ActorType`, leveraging the Swift actor model.
 This supports safe access and modification of shared mutable state within those scheduled closures when you choose the right actor context.
-`timeout` bounds async work with task cancellation; use normal Swift actor isolation for mutable state inside the timed operation.
+`timeout`, `time`, and `retry` wrap async work directly; use normal Swift actor isolation for mutable state inside those operations.
 
 Feed shared resources into the actor-backed scheduling functions. They will handle actor execution out of box.
 
@@ -309,6 +319,80 @@ Behavior contract:
 - A non-positive timeout duration throws `TimeoutError.timedOut(duration)` immediately.
 - Swift task cancellation is cooperative, so blocking or cancellation-ignoring operations can delay cleanup.
 
+## Time
+
+`time` is for measuring work without changing the work.
+
+```swift
+let user = try await time("fetch user") {
+    try await api.fetchUser()
+}
+```
+
+Default compact output:
+
+```text
+[Throttler] fetch user completed in 124.3 ms
+[Throttler] fetch user failed in 2.100 s: NetworkError.timeout
+[Throttler] completed in 8.7 ms
+```
+
+Verbose output:
+
+```swift
+try await time("fetch user", style: .verbose) {
+    try await api.fetchUser()
+}
+```
+
+```text
+[Throttler] label="fetch user" result=success duration="124.3 ms"
+[Throttler] label="fetch user" result=failure duration="2.100 s" error="NetworkError.timeout"
+```
+
+Custom reporting destination:
+
+```swift
+try await time("fetch user", report: { logger.info("\($0)") }) {
+    try await api.fetchUser()
+}
+```
+
+Behavior contract:
+
+- Sync and async overloads are available.
+- The async overload uses `@Sendable` closures for Swift 6 concurrency safety.
+- The operation starts immediately.
+- The operation return value is returned unchanged, including `Void`.
+- The original operation error is rethrown unchanged.
+- Duration is reported after success and after failure.
+- Measurement uses `ContinuousClock`, not wall-clock time.
+- `time` does not change actor context.
+
+## Retry
+
+`retry` is for temporary async failures.
+
+```swift
+let user = try await retry(3, every: .milliseconds(300)) {
+    try await api.fetchUser()
+}
+```
+
+Behavior contract:
+
+- The first attempt runs immediately.
+- `retry(3, every: .milliseconds(300))` means 3 total attempts.
+- The delay happens only after a failed attempt when another attempt remains.
+- The first successful attempt returns immediately.
+- If every attempt fails, the last operation error is thrown.
+- `CancellationError` is not retried.
+- Parent-task cancellation during the operation or delay throws cancellation.
+- Attempts never overlap.
+- The operation closure and returned value are `Sendable` for Swift 6 concurrency safety.
+- A non-positive delay retries immediately.
+- A non-positive attempt count throws `RetryError.invalidAttemptCount(maxAttempts)`.
+
 # Comparison with RxSwift and Combine for the advanced options in code
 
 - **RxSwift**:
@@ -391,6 +475,18 @@ debounce(.seconds(2), identifier: "custom_debounce_id") {
 
 ```
 
+# Throttler V2.2.3 - Time and retry update
+
+## What's New in V2.2.3
+
+- Added `time` sync and async wrappers for measuring work while preserving the original return value and thrown error.
+- Added `TimeReportStyle.compact` and `.verbose`.
+- Added custom `report` destination support for `time`.
+- Added `retry(_:every:operation:)` for async retry with total attempt count and delay.
+- Added `RetryError.invalidAttemptCount(Int)`.
+- Added tests for time success, failure, `Void`, verbose output, retry success, retry failure, retry delay, invalid count, and cancellation.
+- Documented exact behavior contracts for time and retry.
+
 # Throttler V2.2.2 - Repeat and timeout update
 
 ## What's New in V2.2.2
@@ -440,11 +536,11 @@ iOS 16.0, macOS 13.0, watchOS 9.0, tvOS 16.0
 
 ## Swift Package Manager
 
-To use the latest V2.2.2 version, add the package to your `Package.swift`:
+To use the latest V2.2.3 version, add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.2"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.3"))
 ]
 ```
 
