@@ -283,6 +283,38 @@ final class ThrottlerTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 1.0)
     }
 
+    func testMainActorSynchronousOverloadsAcceptMainActorClosures() async {
+        let recorder = Recorder()
+
+        delay(.milliseconds(10)) { @MainActor in
+            Task {
+                await recorder.append(1)
+            }
+        }
+
+        debounce(.milliseconds(10), identifier: UUID().uuidString) { @MainActor in
+            Task {
+                await recorder.append(2)
+            }
+        }
+
+        throttle(.milliseconds(10), identifier: UUID().uuidString) { @MainActor in
+            Task {
+                await recorder.append(3)
+            }
+        }
+
+        let task = execute(with: .milliseconds(10)) { @MainActor in
+            await recorder.append(4)
+        }
+        await task.value
+
+        try? await Task.sleep(for: .milliseconds(120))
+
+        let values = await recorder.values()
+        XCTAssertEqual(values.sorted(), [1, 2, 3, 4])
+    }
+
     func testSynchronousDelayStillExecutesOperation() async {
         let recorder = Recorder()
 

@@ -24,3 +24,17 @@ public func execute(
         await actor.run(operation)
     }
 }
+
+@discardableResult
+public func execute(
+    with delay: Duration = .seconds(0.0),
+    operation: @escaping @MainActor @Sendable () async -> Void
+) -> Task<Void, Never> {
+    Task {
+        if delay > .seconds(0.0) {
+            try? await Task.sleep(for: delay)
+        }
+        guard !Task.isCancelled else { return }
+        await operation()
+    }
+}

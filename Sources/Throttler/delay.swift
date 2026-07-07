@@ -34,6 +34,20 @@ public func delay(
     }
 }
 
+/// Delays a main-actor synchronous operation.
+public func delay(
+    _ duration: Duration = .seconds(1.0),
+    operation: @escaping @MainActor @Sendable () -> Void
+) {
+    Task {
+        await throttler.delay(
+            duration,
+            by: .mainActor,
+            operation: { await operation() }
+        )
+    }
+}
+
 /// Delays an async throwing operation and returns the delay task, which can be
 /// cancelled before the operation starts. Errors thrown by `operation` are
 /// delivered to `onError`.

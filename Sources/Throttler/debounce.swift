@@ -65,6 +65,28 @@ public func debounce(
     }
 }
 
+/// Debounces a main-actor synchronous operation.
+public func debounce(
+    _ duration: Duration = .seconds(1.0),
+    identifier: String = callSiteDefaultIdentifier,
+    option: DebounceOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
+    operation: @escaping @MainActor @Sendable () -> Void
+) {
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
+    Task {
+        await throttler.debounce(
+            duration,
+            identifier: identifier,
+            by: .mainActor,
+            option: option,
+            operation: { await operation() }
+        )
+    }
+}
+
 /// Debounces an async throwing operation and returns the scheduling task.
 /// Errors thrown by `operation` are delivered to `onError`.
 @discardableResult

@@ -24,7 +24,7 @@ reactive pipeline for simple timing behavior.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "3.0.0"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "3.0.1"))
 ]
 ```
 
@@ -104,6 +104,9 @@ the scheduled closure.
   async body.
 - `.ownedActor`: closures run through a package-owned serial actor.
 - `.taskContext`: closures run directly in the scheduled task context.
+
+Explicitly `@MainActor` sync closures are accepted by dedicated overloads for
+`debounce`, `throttle`, `delay`, and `execute`.
 
 The package's scheduling state is actor-backed. Shared mutable state inside your
 operation still needs the right actor context or normal Swift synchronization.
@@ -340,6 +343,12 @@ Behavior contract:
 - A non-positive attempt count throws `RetryError.invalidAttemptCount(maxAttempts)`.
 
 ## Version Notes
+
+### 3.0.1
+
+- Added dedicated overloads for explicitly `@MainActor` sync closures.
+- This keeps the 3.0 Sendable contract while preserving ergonomic UI-call-site
+  usage.
 
 ### 3.0.0
 

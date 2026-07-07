@@ -65,6 +65,28 @@ public func throttle(
     }
 }
 
+/// Throttles a main-actor synchronous operation.
+public func throttle(
+    _ duration: Duration = .seconds(1.0),
+    identifier: String = callSiteDefaultIdentifier,
+    option: ThrottleOptions = .default,
+    fileID: String = #fileID,
+    line: UInt = #line,
+    column: UInt = #column,
+    operation: @escaping @MainActor @Sendable () -> Void
+) {
+    let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
+    Task {
+        await throttler.throttle(
+            duration,
+            identifier: identifier,
+            by: .mainActor,
+            option: option,
+            operation: { await operation() }
+        )
+    }
+}
+
 /// Throttles an async throwing operation and returns the scheduling task.
 /// Errors thrown by `operation` are delivered to `onError`.
 @discardableResult
