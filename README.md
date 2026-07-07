@@ -24,7 +24,7 @@ reactive pipeline for simple timing behavior.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "2.2.6"))
+    .package(url: "https://github.com/boraseoksoon/Throttler.git", .upToNextMajor(from: "3.0.0"))
 ]
 ```
 
@@ -104,8 +104,6 @@ the scheduled closure.
   async body.
 - `.ownedActor`: closures run through a package-owned serial actor.
 - `.taskContext`: closures run directly in the scheduled task context.
-- `.currentActor`: legacy alias for `.taskContext`; it does not hop back to the
-  caller's actor.
 
 The package's scheduling state is actor-backed. Shared mutable state inside your
 operation still needs the right actor context or normal Swift synchronization.
@@ -309,7 +307,7 @@ try await time("fetch user", report: { logger.info("\($0)") }) {
 Behavior contract:
 
 - Sync and async overloads are available.
-- The async overload uses `@Sendable` closures.
+- Sync and async overloads use `@Sendable` closures.
 - The operation starts immediately.
 - The operation return value is returned unchanged, including `Void`.
 - The original operation error is rethrown unchanged.
@@ -343,6 +341,13 @@ Behavior contract:
 
 ## Version Notes
 
+### 3.0.0
+
+- Removed the legacy `ActorType.currentActor` alias. Use `.taskContext`.
+- Removed the internal unchecked synchronous-operation wrapper.
+- Sync scheduling closures are now `@Sendable`.
+- The call-site identifier sentinel is no longer public API.
+
 ### 2.2.6
 
 - Rewrote the README around current behavior contracts.
@@ -355,8 +360,6 @@ Behavior contract:
   API.
 - Default async identifiers are derived from the call site.
 - Explicit `identifier` async calls keep the same source shape as 2.2.4.
-- The internal synchronous-closure wrapper was renamed from the stale
-  `LegacyOperation` name to `SynchronousOperation`.
 
 ### 2.2.4
 
@@ -364,7 +367,7 @@ Behavior contract:
   `Thread.callStackSymbols` to call-site magic-literal parameters.
 - The internal debounce/throttle scheduling state was unified.
 - Debounce and throttle state remain independent for the same identifier.
-- `ActorType` docs were corrected for `.mainActor` and `.currentActor`.
+- `ActorType` docs were corrected for actor execution behavior.
 - Stale Linux XCTest manifest files were removed.
 
 ### 2.2.3

@@ -23,14 +23,13 @@
 public func delay(
     _ duration: Duration = .seconds(1.0),
     by `actor`: ActorType = .mainActor,
-    operation: @escaping () -> Void
+    operation: @escaping @Sendable () -> Void
 ) {
-    let synchronousOperation = SynchronousOperation(operation)
     Task {
         await throttler.delay(
             duration,
             by: .taskContext,
-            operation: { await actor.run(synchronousOperation) }
+            operation: { await actor.run(operation) }
         )
     }
 }

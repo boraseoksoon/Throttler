@@ -23,8 +23,6 @@ public enum ThrottleOptions: Sendable {
 
 /// The execution context used to run a scheduled operation.
 public enum ActorType: Sendable {
-    /// A legacy alias for `.taskContext`. It does not hop back to the caller's actor.
-    case currentActor
     /// A package-owned serial actor. Operations sharing it run serialized.
     case ownedActor
     /// The scheduled task's own context, with no extra actor hop.
@@ -35,24 +33,24 @@ public enum ActorType: Sendable {
     /// `@MainActor` at the call site when its body must be main-actor-isolated.
     case mainActor
 
-    func run(_ operation: SynchronousOperation) async {
+    func run(_ operation: @escaping @Sendable () -> Void) async {
         switch self {
         case .mainActor:
-            await Self.runOnMainActor(operation)
+            await Self.runSyncOnMainActor(operation)
         case .ownedActor:
-            await Self.runOnOwnedActor(operation)
-        case .currentActor, .taskContext:
-            operation.run()
+            await Self.runSyncOnOwnedActor(operation)
+        case .taskContext:
+            operation()
         }
     }
 
     func run(_ operation: @escaping @Sendable () async -> Void) async {
         switch self {
         case .mainActor:
-            await Self.runOnMainActor(operation)
+            await Self.runAsyncOnMainActor(operation)
         case .ownedActor:
-            await Self.runOnOwnedActor(operation)
-        case .currentActor, .taskContext:
+            await Self.runAsyncOnOwnedActor(operation)
+        case .taskContext:
             await operation()
         }
     }
@@ -60,54 +58,54 @@ public enum ActorType: Sendable {
     func run(_ operation: @escaping @Sendable () async throws -> Void) async throws {
         switch self {
         case .mainActor:
-            try await Self.runOnMainActor(operation)
+            try await Self.runThrowingAsyncOnMainActor(operation)
         case .ownedActor:
-            try await Self.runOnOwnedActor(operation)
-        case .currentActor, .taskContext:
+            try await Self.runThrowingAsyncOnOwnedActor(operation)
+        case .taskContext:
             try await operation()
         }
     }
 
     @MainActor
-    private static func runOnMainActor(_ operation: SynchronousOperation) {
-        operation.run()
+    private static func runSyncOnMainActor(_ operation: @Sendable () -> Void) {
+        operation()
     }
 
     @MainActor
-    private static func runOnMainActor(_ operation: @escaping @Sendable () async -> Void) async {
+    private static func runAsyncOnMainActor(_ operation: @escaping @Sendable () async -> Void) async {
         await operation()
     }
 
     @MainActor
-    private static func runOnMainActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+    private static func runThrowingAsyncOnMainActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
         try await operation()
     }
 
-    private static func runOnOwnedActor(_ operation: SynchronousOperation) async {
-        await ownedActorExecutor.run(operation)
+    private static func runSyncOnOwnedActor(_ operation: @escaping @Sendable () -> Void) async {
+        await ownedActorExecutor.runSync(operation)
     }
 
-    private static func runOnOwnedActor(_ operation: @escaping @Sendable () async -> Void) async {
-        await ownedActorExecutor.run(operation)
+    private static func runAsyncOnOwnedActor(_ operation: @escaping @Sendable () async -> Void) async {
+        await ownedActorExecutor.runAsync(operation)
     }
 
-    private static func runOnOwnedActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
-        try await ownedActorExecutor.run(operation)
+    private static func runThrowingAsyncOnOwnedActor(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+        try await ownedActorExecutor.runThrowingAsync(operation)
     }
 }
 
 private let ownedActorExecutor = OwnedActorExecutor()
 
 private actor OwnedActorExecutor {
-    func run(_ operation: SynchronousOperation) {
-        operation.run()
+    func runSync(_ operation: @Sendable () -> Void) {
+        operation()
     }
 
-    func run(_ operation: @escaping @Sendable () async -> Void) async {
+    func runAsync(_ operation: @escaping @Sendable () async -> Void) async {
         await operation()
     }
 
-    func run(_ operation: @escaping @Sendable () async throws -> Void) async throws {
+    func runThrowingAsync(_ operation: @escaping @Sendable () async throws -> Void) async throws {
         try await operation()
     }
 }
@@ -116,18 +114,10 @@ let throttler = Throttler()
 
 /// The sentinel default for `identifier`; it marks calls that should be grouped
 /// by their call site (file, line, and column) instead of an explicit identifier.
-public let callSiteDefaultIdentifier = "__throttler.call.site.default__"
+@usableFromInline let callSiteDefaultIdentifier = "__throttler.call.site.default__"
 
 func resolveCallSiteIdentifier(_ identifier: String, fileID: String, line: UInt, column: UInt) -> String {
     identifier == callSiteDefaultIdentifier ? "\(fileID):\(line):\(column)" : identifier
-}
-
-final class SynchronousOperation: @unchecked Sendable {
-    let run: () -> Void
-
-    init(_ run: @escaping () -> Void) {
-        self.run = run
-    }
 }
 
 func throttlerErrorWrapping(

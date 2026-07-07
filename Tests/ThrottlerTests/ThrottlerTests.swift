@@ -255,7 +255,7 @@ final class ThrottlerTests: XCTestCase {
     }
 
     func testOwnedActorSerializesSynchronousOperations() async {
-        final class Counter {
+        final class Counter: @unchecked Sendable {
             var value = 0
         }
 
@@ -286,7 +286,7 @@ final class ThrottlerTests: XCTestCase {
     func testSynchronousDelayStillExecutesOperation() async {
         let recorder = Recorder()
 
-        delay(.milliseconds(20), by: .currentActor) {
+        delay(.milliseconds(20), by: .taskContext) {
             Task {
                 await recorder.append(1)
             }
@@ -302,7 +302,7 @@ final class ThrottlerTests: XCTestCase {
         let recorder = Recorder()
         let identifier = UUID().uuidString
 
-        debounce(.milliseconds(20), identifier: identifier, by: .currentActor) {
+        debounce(.milliseconds(20), identifier: identifier, by: .taskContext) {
             Task {
                 await recorder.append(1)
             }
@@ -318,7 +318,7 @@ final class ThrottlerTests: XCTestCase {
         let recorder = Recorder()
         let identifier = UUID().uuidString
 
-        throttle(.milliseconds(20), identifier: identifier, by: .currentActor) {
+        throttle(.milliseconds(20), identifier: identifier, by: .taskContext) {
             Task {
                 await recorder.append(1)
             }

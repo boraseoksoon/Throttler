@@ -51,9 +51,8 @@ public func debounce(
     fileID: String = #fileID,
     line: UInt = #line,
     column: UInt = #column,
-    operation: @escaping () -> Void
+    operation: @escaping @Sendable () -> Void
 ) {
-    let synchronousOperation = SynchronousOperation(operation)
     let identifier = resolveCallSiteIdentifier(identifier, fileID: fileID, line: line, column: column)
     Task {
         await throttler.debounce(
@@ -61,7 +60,7 @@ public func debounce(
             identifier: identifier,
             by: .taskContext,
             option: option,
-            operation: { await actor.run(synchronousOperation) }
+            operation: { await actor.run(operation) }
         )
     }
 }
